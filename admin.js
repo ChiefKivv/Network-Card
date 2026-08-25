@@ -1,40 +1,338 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
-import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app-check.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytesResumable, deleteObject } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
-import { firebaseConfig, APP_CHECK_SITE_KEY, ADMIN_EMAIL } from "./firebase-config.js";
+<!DOCTYPE html>
+<html lang="en">
 
-const app = initializeApp(firebaseConfig);
+<head>
 
-if (APP_CHECK_SITE_KEY && !APP_CHECK_SITE_KEY.startsWith("PASTE_")) {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
-    isTokenAutoRefreshEnabled: true
-  });
-}
+  <meta charset="UTF-8">
 
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
 
-const loginPanel = document.querySelector("#loginPanel");
-const dashboard = document.querySelector("#dashboard");
-const loginStatus = document.querySelector("#loginStatus");
-const logoutButton = document.querySelector("#logout");
+  <meta
+    name="theme-color"
+    content="#0a0a0a"
+  >
 
-function esc(value="") {
-  const s = String(value);
-  return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-}
 
-function formatDate(value) {
-  if (!value) return "Unknown date";
-  const d = value?.toDate ? value.toDate() : new Date(value);
-  return Number.isNaN(d.getTime()) ? "Unknown date" : d.toLocaleString();
-}
+  <!-- CHIEF KIVV BROWSER ICON -->
 
-onAuthStateChanged(auth, async user => {
+  <link
+    rel="icon"
+    type="image/png"
+    href="./assets/favicon.png"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="./assets/favicon.png"
+  >
+
+
+  <title>Chief Kivv Admin</title>
+
+
+  <link
+    rel="stylesheet"
+    href="styles.css"
+  >
+
+</head>
+
+
+<body>
+
+
+  <main class="admin site">
+
+
+    <!-- ========================= -->
+    <!-- ADMIN HEADER              -->
+    <!-- ========================= -->
+
+    <header class="admin-head">
+
+      <div class="admin-brand">
+
+        <img
+          src="./assets/ChiefKivvWhite.png"
+          alt="Chief Kivv"
+          style="
+            display:block;
+            width:220px;
+            max-width:70vw;
+            height:auto;
+            max-height:none;
+            object-fit:contain;
+            border-radius:0;
+            margin:0 0 8px 0;
+          "
+          onerror="this.style.display='none'"
+        >
+
+        <p>
+          Admin Dashboard
+        </p>
+
+      </div>
+
+
+      <button
+        id="logout"
+        class="small-btn"
+        type="button"
+        hidden
+      >
+        LOG OUT
+      </button>
+
+    </header>
+
+
+    <!-- ========================= -->
+    <!-- ADMIN LOGIN               -->
+    <!-- ========================= -->
+
+    <section
+      id="loginPanel"
+      class="panel"
+    >
+
+      <h2>
+        ADMIN LOGIN
+      </h2>
+
+
+      <form id="loginForm">
+
+
+        <label>
+          Email
+
+          <input
+            id="loginEmail"
+            type="email"
+            value="doublecupbookings@gmail.com"
+            autocomplete="username"
+            required
+          >
+        </label>
+
+
+        <label>
+          Password
+
+          <input
+            id="loginPassword"
+            type="password"
+            autocomplete="current-password"
+            required
+          >
+        </label>
+
+
+        <button
+          class="submit"
+          type="submit"
+        >
+          SIGN IN
+        </button>
+
+
+        <p
+          id="loginStatus"
+          class="status"
+        ></p>
+
+
+      </form>
+
+    </section>
+
+
+    <!-- ================================== -->
+    <!-- ADMIN DASHBOARD                    -->
+    <!-- Hidden until authenticated         -->
+    <!-- ================================== -->
+
+    <div
+      id="dashboard"
+      hidden
+    >
+
+
+      <!-- ========================= -->
+      <!-- ADD / UPLOAD MIX          -->
+      <!-- ========================= -->
+
+      <section class="panel">
+
+
+        <h2>
+          UPLOAD A MIX
+        </h2>
+
+
+        <form id="mixForm">
+
+
+          <label>
+            Mix Name*
+
+            <input
+              id="mixName"
+              maxlength="150"
+              placeholder="Summer Soca Session"
+              required
+            >
+          </label>
+
+
+          <!-- MIX SOURCE -->
+
+          <label>
+            Mix Source*
+
+            <select id="mixSource">
+
+              <option value="upload">
+                Upload MP3 / AIF / AIFF
+              </option>
+
+              <option value="soundcloud">
+                SoundCloud Link
+              </option>
+
+            </select>
+
+          </label>
+
+
+          <!-- DIRECT AUDIO UPLOAD -->
+
+          <label id="mixFileLabel">
+
+            Audio File*
+
+            <input
+              id="mixFile"
+              type="file"
+              accept="audio/mpeg,audio/aiff,audio/x-aiff,.mp3,.aif,.aiff"
+            >
+
+          </label>
+
+
+          <!-- SOUNDCLOUD -->
+
+          <label
+            id="soundcloudUrlLabel"
+            hidden
+          >
+
+            SoundCloud Track URL*
+
+            <input
+              id="soundcloudUrl"
+              type="url"
+              maxlength="1000"
+              placeholder="https://soundcloud.com/artist/mix-name"
+            >
+
+          </label>
+
+
+          <p class="muted">
+            Direct uploads: MP3, AIF or AIFF up to 2 GB.
+            Large files use resumable upload.
+          </p>
+
+
+          <!-- LATEST MIX -->
+
+          <label class="check">
+
+            <input
+              id="isLatest"
+              type="checkbox"
+            >
+
+            Set as Latest Mix
+
+          </label>
+
+
+          <button
+            class="submit"
+            type="submit"
+          >
+            ADD MIX
+          </button>
+
+
+          <p
+            id="mixStatus"
+            class="status"
+          ></p>
+
+
+        </form>
+
+      </section>
+
+
+      <!-- ========================= -->
+      <!-- MIX LIBRARY               -->
+      <!-- ========================= -->
+
+      <section class="panel">
+
+        <h2>
+          MIX LIBRARY
+        </h2>
+
+        <div id="adminMixes">
+          Loading…
+        </div>
+
+      </section>
+
+
+      <!-- ========================= -->
+      <!-- BOOKING REQUESTS          -->
+      <!-- ========================= -->
+
+      <section class="panel">
+
+        <h2>
+          BOOKING REQUESTS
+        </h2>
+
+        <div id="bookings">
+          Loading…
+        </div>
+
+      </section>
+
+
+    </div>
+
+  </main>
+
+
+  <!-- ========================= -->
+  <!-- ADMIN JAVASCRIPT          -->
+  <!-- ========================= -->
+
+  <script
+    type="module"
+    src="admin.js"
+  ></script>
+
+
+</body>
+</html>onAuthStateChanged(auth, async user => {
   const allowed = !!(user && user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase());
   loginPanel.hidden = allowed;
   dashboard.hidden = !allowed;
