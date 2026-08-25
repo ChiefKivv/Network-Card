@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null &&
+             request.auth.token.email == "doublecupbookings@gmail.com";
+    }
+
+    function bookingFieldsAreValid(data) {
+      let required = [
+        'eventDate','eventType','requestedTime','genre','requesterName',
+        'email','phone','depositMethod','createdAt','status'
+      ];
+      let optional = ['details'];
+
+      return data.keys().hasAll(required) &&
+             data.keys().hasOnly(required.concat(optional)) &&
+             data.eventDate is string && data.eventDate.size() > 0 && data.eventDate.size() <= 20 &&
+             data.eventType is string && data.eventType.size() > 0 && data.eventType.size() <= 100 &&
+             data.requestedTime is string && data.requestedTime.size() > 0 && data.requestedTime.size() <= 20 &&
+             data.genre is string && data.genre.size() > 0 && data.genre.size() <= 60 &&
+             data.requesterName is string && data.requesterName.size() > 0 && data.requesterName.size() <= 100 &&
+             data.email is string && data.email.size() > 3 && data.email.size() <= 254 &&
+             data.phone is string && data.phone.size() > 6 && data.phone.size() <= 40 &&
+             data.depositMethod is string && data.depositMethod.size() > 0 && data.depositMethod.size() <= 60 &&
+             data.createdAt is string && data.createdAt.size() >= 20 && data.createdAt.size() <= 40 &&
+             data.status == 'NEW' &&
+             (!data.keys().hasAny(['details']) || (data.details is string && data.details.size() <= 2000));
+    }
+
+    function mixCreateIsValid(data) {
+      return data.keys().hasAll(['name','storagePath','isLatest','createdAt']) &&
+             data.keys().hasOnly(['name','storagePath','isLatest','createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+             data.storagePath is string && data.storagePath.size() > 7 && data.storagePath.size() <= 500 &&
+             data.isLatest is bool &&
+             data.createdAt is string && data.createdAt.size() >= 20 && data.createdAt.size() <= 40;
+    }
+
+    match /mixes/{mixId} {
+      allow read: if true;
+      allow create: if isAdmin() && mixCreateIsValid(request.resource.data);
+      allow update: if isAdmin() &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isLatest']) &&
+                    request.resource.data.isLatest is bool;
+      allow delete: if isAdmin();
+    }
+
+    match /bookings/{bookingId} {
+      allow create: if bookingFieldsAreValid(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Everything else is denied by default.
+  }
+}

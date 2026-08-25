@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chief Kivv Admin</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="admin site">
+  <header class="admin-head">
+    <div><h1>CHIEF KIVV</h1><p>Admin Dashboard</p></div>
+    <button id="logout" class="small-btn" hidden>LOG OUT</button>
+  </header>
+
+  <section id="loginPanel" class="panel">
+    <h2>ADMIN LOGIN</h2>
+    <form id="loginForm">
+      <label>Email<input id="loginEmail" type="email" value="doublecupbookings@gmail.com" required></label>
+      <label>Password<input id="loginPassword" type="password" required></label>
+      <button class="submit">SIGN IN</button>
+      <p id="loginStatus" class="status"></p>
+    </form>
+  </section>
+
+  <div id="dashboard" hidden>
+    <section class="panel">
+      <h2>UPLOAD A MIX</h2>
+      <form id="mixForm">
+        <label>Mix Name*<input id="mixName" maxlength="150" placeholder="Summer Soca Session" required></label>
+        <label>MP3 File*<input id="mixFile" type="file" accept="audio/mpeg,.mp3" required></label>
+        <label class="check"><input id="isLatest" type="checkbox"> Set as Latest Mix</label>
+        <button class="submit">UPLOAD MIX</button>
+        <p id="mixStatus" class="status"></p>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>MIX LIBRARY</h2>
+      <div id="adminMixes">Loading…</div>
+    </section>
+
+    <section class="panel">
+      <h2>BOOKING REQUESTS</h2>
+      <div id="bookings">Loading…</div>
+    </section>
+  </div>
+</main>
+<script type="module" src="admin.js"></script>
+</body>
+</html>
