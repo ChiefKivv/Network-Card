@@ -4,7 +4,7 @@
 export const firebaseConfig = {
   apiKey: "AIzaSyAZe8ybYoUEZSP6IBm7J7PxaX6oCINHlfA",
   authDomain: "chief-kivv-dj-card.firebaseapp.com",
-  projectId: "chief-kivv-dj-card"",
+  projectId: "chief-kivv-dj-card",
   storageBucket: "chief-kivv-dj-card.firebasestorage.app",
   messagingSenderId: "1074666979091",
   appId: "1:1074666979091:web:627d94e88e8ea333fce4e6"
