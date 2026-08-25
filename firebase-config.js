@@ -1,4 +1,4 @@
-// PUBLIC WEB CONFIG ONLY.
+// PUBLIC WEB CONFIG ONLY - UPDATED.
 // Replace the placeholder values below with Firebase Console > Project settings > Your apps > Web app.
 // Never put passwords, service-account JSON, private keys, or server API secrets in this file.
 export const firebaseConfig = {
