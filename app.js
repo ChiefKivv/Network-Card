@@ -39,15 +39,55 @@ function closeBookingModal() {
   modal.setAttribute("aria-hidden", "true");
 }
 
+function soundCloudPlayerUrl(url) {
+  return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&visual=false`;
+}
+
+function playMix(mix) {
+  if (mix.sourceType === "soundcloud" && mix.soundcloudUrl) {
+    player.pause();
+    player.removeAttribute("src");
+    player.style.display = "none";
+    let sc = document.querySelector("#soundcloudPlayer");
+    if (!sc) {
+      sc = document.createElement("iframe");
+      sc.id = "soundcloudPlayer";
+      sc.width = "100%";
+      sc.height = "166";
+      sc.allow = "autoplay";
+      sc.frameBorder = "0";
+      player.insertAdjacentElement("beforebegin", sc);
+    }
+    sc.src = soundCloudPlayerUrl(mix.soundcloudUrl);
+    sc.hidden = false;
+    sc.scrollIntoView({behavior:"smooth", block:"center"});
+    return;
+  }
+
+  const sc = document.querySelector("#soundcloudPlayer");
+  if (sc) { sc.hidden = true; sc.removeAttribute("src"); }
+  player.style.display = "";
+  player.src = mix.url;
+  player.play().catch(()=>{});
+  player.scrollIntoView({behavior:"smooth", block:"center"});
+}
+
 async function loadMixes() {
   try {
     const snap = await getDocs(query(collection(db, "mixes"), orderBy("createdAt", "desc"), limit(50)));
     const mixes = [];
     for (const docSnap of snap.docs) {
       const data = docSnap.data();
+      const mix = {...data, id: docSnap.id};
+      if (data.sourceType === "soundcloud" && data.soundcloudUrl) {
+        mixes.push(mix);
+        continue;
+      }
       if (!data.storagePath) continue;
       try {
-        mixes.push({...data, id: docSnap.id, url: await getDownloadURL(ref(storage, data.storagePath))});
+        mix.url = await getDownloadURL(ref(storage, data.storagePath));
+        mix.sourceType = mix.sourceType || "upload";
+        mixes.push(mix);
       } catch (err) {
         console.warn("Skipped unavailable mix", docSnap.id, err);
       }
@@ -55,17 +95,17 @@ async function loadMixes() {
 
     const latest = mixes.find(m => m.isLatest) || mixes[0];
     latestEl.innerHTML = latest
-      ? `<div class="latest-card"><span class="eyebrow">LATEST MIX</span><strong>${escapeHTML(latest.name)}</strong><button class="play-latest" data-url="${escapeHTML(latest.url)}">▶ PLAY</button></div>`
+      ? `<div class="latest-card"><span class="eyebrow">LATEST MIX</span><strong>${escapeHTML(latest.name)}</strong><button class="play-latest" data-id="${escapeHTML(latest.id)}">▶ PLAY</button></div>`
       : `<div class="empty">No mixes have been published yet.</div>`;
 
     listEl.innerHTML = mixes.length
-      ? mixes.filter(m => !latest || m.id !== latest.id).map(m => `<button class="mix-row" data-url="${escapeHTML(m.url)}"><span>${escapeHTML(m.name)}</span><b>▶</b></button>`).join("")
+      ? mixes.filter(m => !latest || m.id !== latest.id).map(m => `<button class="mix-row" data-id="${escapeHTML(m.id)}"><span>${escapeHTML(m.name)}</span><b>▶</b></button>`).join("")
       : `<div class="empty">Your mixes will appear here.</div>`;
 
-    document.querySelectorAll("[data-url]").forEach(btn => btn.addEventListener("click", async () => {
-      player.src = btn.dataset.url;
-      try { await player.play(); } catch {}
-      player.scrollIntoView({behavior:"smooth", block:"center"});
+    const byId = new Map(mixes.map(m => [m.id, m]));
+    document.querySelectorAll("[data-id]").forEach(btn => btn.addEventListener("click", () => {
+      const mix = byId.get(btn.dataset.id);
+      if (mix) playMix(mix);
     }));
   } catch (err) {
     console.error("Mix load failed", err);
