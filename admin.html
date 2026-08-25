@@ -28,9 +28,17 @@
       <h2>UPLOAD A MIX</h2>
       <form id="mixForm">
         <label>Mix Name*<input id="mixName" maxlength="150" placeholder="Summer Soca Session" required></label>
-        <label>MP3 File*<input id="mixFile" type="file" accept="audio/mpeg,.mp3" required></label>
+        <label>Mix Source*
+          <select id="mixSource">
+            <option value="upload">Upload MP3 / AIF / AIFF</option>
+            <option value="soundcloud">SoundCloud Link</option>
+          </select>
+        </label>
+        <label id="mixFileLabel">Audio File*<input id="mixFile" type="file" accept="audio/mpeg,audio/aiff,audio/x-aiff,.mp3,.aif,.aiff"></label>
+        <label id="soundcloudUrlLabel" hidden>SoundCloud Track URL*<input id="soundcloudUrl" type="url" maxlength="1000" placeholder="https://soundcloud.com/artist/mix-name"></label>
+        <p class="muted">Direct uploads: MP3, AIF or AIFF up to 2 GB. Large files use resumable upload.</p>
         <label class="check"><input id="isLatest" type="checkbox"> Set as Latest Mix</label>
-        <button class="submit">UPLOAD MIX</button>
+        <button class="submit">ADD MIX</button>
         <p id="mixStatus" class="status"></p>
       </form>
     </section>
