@@ -29,12 +29,24 @@ service cloud.firestore {
     }
 
     function mixCreateIsValid(data) {
-      return data.keys().hasAll(['name','storagePath','isLatest','createdAt']) &&
-             data.keys().hasOnly(['name','storagePath','isLatest','createdAt']) &&
-             data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
-             data.storagePath is string && data.storagePath.size() > 7 && data.storagePath.size() <= 500 &&
-             data.isLatest is bool &&
-             data.createdAt is string && data.createdAt.size() >= 20 && data.createdAt.size() <= 40;
+      let commonOk = data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+                     data.sourceType is string &&
+                     data.isLatest is bool &&
+                     data.createdAt is string && data.createdAt.size() >= 20 && data.createdAt.size() <= 40;
+
+      let uploadOk = data.sourceType == 'upload' &&
+                     data.keys().hasAll(['name','sourceType','storagePath','isLatest','createdAt']) &&
+                     data.keys().hasOnly(['name','sourceType','storagePath','isLatest','createdAt']) &&
+                     data.storagePath is string && data.storagePath.size() > 7 && data.storagePath.size() <= 500;
+
+      let soundcloudOk = data.sourceType == 'soundcloud' &&
+                         data.keys().hasAll(['name','sourceType','soundcloudUrl','isLatest','createdAt']) &&
+                         data.keys().hasOnly(['name','sourceType','soundcloudUrl','isLatest','createdAt']) &&
+                         data.soundcloudUrl is string &&
+                         data.soundcloudUrl.size() > 20 && data.soundcloudUrl.size() <= 1000 &&
+                         data.soundcloudUrl.matches('^https://([A-Za-z0-9-]+\.)*soundcloud\.com/.*$');
+
+      return commonOk && (uploadOk || soundcloudOk);
     }
 
     match /mixes/{mixId} {
