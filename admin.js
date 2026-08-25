@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/fireba
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app-check.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, deleteObject } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
+import { getStorage, ref, uploadBytesResumable, deleteObject } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
 import { firebaseConfig, APP_CHECK_SITE_KEY, ADMIN_EMAIL } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
@@ -64,50 +64,107 @@ document.querySelector("#loginForm").addEventListener("submit", async e => {
 });
 logoutButton.onclick = () => signOut(auth);
 
+const mixSource = document.querySelector("#mixSource");
+const mixFile = document.querySelector("#mixFile");
+const mixFileLabel = document.querySelector("#mixFileLabel");
+const soundcloudUrl = document.querySelector("#soundcloudUrl");
+const soundcloudUrlLabel = document.querySelector("#soundcloudUrlLabel");
+
+function syncMixSourceFields() {
+  const useSoundCloud = mixSource.value === "soundcloud";
+  mixFileLabel.hidden = useSoundCloud;
+  soundcloudUrlLabel.hidden = !useSoundCloud;
+  mixFile.required = !useSoundCloud;
+  soundcloudUrl.required = useSoundCloud;
+}
+
+mixSource.addEventListener("change", syncMixSourceFields);
+syncMixSourceFields();
+
+function isValidSoundCloudUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && (url.hostname === "soundcloud.com" || url.hostname.endsWith(".soundcloud.com"));
+  } catch {
+    return false;
+  }
+}
+
+function uploadLargeAudio(storageRef, file, statusEl) {
+  return new Promise((resolve, reject) => {
+    const task = uploadBytesResumable(storageRef, file, {contentType: file.type || (file.name.toLowerCase().endsWith(".mp3") ? "audio/mpeg" : "audio/aiff")});
+    task.on("state_changed", snapshot => {
+      const pct = snapshot.totalBytes ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100) : 0;
+      statusEl.textContent = `Uploading… ${pct}%`;
+    }, reject, () => resolve(task.snapshot));
+  });
+}
+
 document.querySelector("#mixForm").addEventListener("submit", async e => {
   e.preventDefault();
   const status = document.querySelector("#mixStatus");
   const submit = e.target.querySelector('button[type="submit"]');
-  const file = document.querySelector("#mixFile").files[0];
   const name = document.querySelector("#mixName").value.trim();
   const latest = document.querySelector("#isLatest").checked;
+  const sourceType = mixSource.value;
 
   if (!name || name.length > 150) { status.textContent = "Mix name must be 1–150 characters."; return; }
-  if (!file || (file.type !== "audio/mpeg" && !file.name.toLowerCase().endsWith(".mp3"))) { status.textContent = "Please select an MP3 file."; return; }
-  if (file.size <= 0 || file.size > 250 * 1024 * 1024) { status.textContent = "MP3 must be larger than 0 bytes and no more than 250 MB."; return; }
 
-  status.textContent = "Uploading…";
+  status.textContent = sourceType === "upload" ? "Preparing upload…" : "Saving SoundCloud mix…";
   submit.disabled = true;
   let storageRef = null;
 
   try {
-    const safe = file.name.replace(/[^a-z0-9._-]/gi,"-");
-    const path = `mixes/${crypto.randomUUID()}-${safe}`;
-    storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file, {contentType:"audio/mpeg"});
+    let mixData;
 
-    const newDoc = await addDoc(collection(db,"mixes"), {
-      name,
-      storagePath:path,
-      isLatest:latest,
-      createdAt:new Date().toISOString()
-    });
+    if (sourceType === "upload") {
+      const file = mixFile.files[0];
+      const lower = file?.name?.toLowerCase() || "";
+      const allowedExt = lower.endsWith(".mp3") || lower.endsWith(".aif") || lower.endsWith(".aiff");
+      const allowedType = ["audio/mpeg", "audio/aiff", "audio/x-aiff", "audio/x-aif"].includes(file?.type || "");
+      if (!file || (!allowedExt && !allowedType)) { status.textContent = "Please select an MP3, AIF, or AIFF file."; return; }
+      if (file.size <= 0 || file.size > 2 * 1024 * 1024 * 1024) { status.textContent = "Audio file must be larger than 0 bytes and no more than 2 GB."; return; }
+
+      const safe = file.name.replace(/[^a-z0-9._-]/gi,"-");
+      const path = `mixes/${crypto.randomUUID()}-${safe}`;
+      storageRef = ref(storage, path);
+      await uploadLargeAudio(storageRef, file, status);
+      mixData = {
+        name,
+        sourceType: "upload",
+        storagePath: path,
+        isLatest: latest,
+        createdAt: new Date().toISOString()
+      };
+    } else {
+      const url = soundcloudUrl.value.trim();
+      if (!isValidSoundCloudUrl(url)) { status.textContent = "Enter a valid https://soundcloud.com/... track URL."; return; }
+      mixData = {
+        name,
+        sourceType: "soundcloud",
+        soundcloudUrl: url,
+        isLatest: latest,
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    const newDoc = await addDoc(collection(db,"mixes"), mixData);
 
     if (latest) {
       const all = await getDocs(collection(db,"mixes"));
       await Promise.all(all.docs.filter(d => d.id !== newDoc.id && d.data().isLatest).map(d => updateDoc(d.ref,{isLatest:false})));
     }
 
-    status.textContent = "Mix uploaded.";
+    status.textContent = sourceType === "upload" ? "Mix uploaded." : "SoundCloud mix added.";
     e.target.reset();
+    syncMixSourceFields();
     await loadMixes();
   } catch (err) {
-    console.error("Mix upload failed", err);
-    // If storage succeeded but Firestore failed, try to remove the orphaned upload.
+    console.error("Mix add failed", err);
     if (storageRef) {
       try { await deleteObject(storageRef); } catch {}
     }
-    status.textContent = "Upload failed. Check Authentication, App Check, Firestore, Storage, and security rules.";
+    status.textContent = "Could not add mix. Check Authentication, Firestore, Storage, App Check, and security rules.";
   } finally {
     submit.disabled = false;
   }
@@ -122,7 +179,8 @@ async function loadMixes() {
 
     el.innerHTML = snap.docs.map(d => {
       const x=d.data();
-      return `<div class="admin-row"><div><strong>${esc(x.name)}</strong><small>${x.isLatest?"LATEST • ":""}${esc(formatDate(x.createdAt))}</small></div><div><button class="small-btn latestBtn" data-id="${d.id}">MAKE LATEST</button> <button class="small-btn danger deleteMix" data-id="${d.id}" data-path="${esc(x.storagePath)}">DELETE</button></div></div>`;
+      const source = x.sourceType === "soundcloud" ? "SOUNDCLOUD" : "UPLOAD";
+      return `<div class="admin-row"><div><strong>${esc(x.name)}</strong><small>${x.isLatest?"LATEST • ":""}${source} • ${esc(formatDate(x.createdAt))}</small></div><div><button class="small-btn latestBtn" data-id="${d.id}">MAKE LATEST</button> <button class="small-btn danger deleteMix" data-id="${d.id}" data-path="${esc(x.storagePath||"")}" data-source="${esc(x.sourceType||"upload")}">DELETE</button></div></div>`;
     }).join("");
 
     document.querySelectorAll(".latestBtn").forEach(b=>b.onclick=async()=>{
@@ -139,10 +197,12 @@ async function loadMixes() {
     document.querySelectorAll(".deleteMix").forEach(b=>b.onclick=async()=>{
       if(!confirm("Delete this mix? This removes the MP3 and its listing.")) return;
       try {
-        try {
-          await deleteObject(ref(storage,b.dataset.path));
-        } catch (err) {
-          if (err?.code !== "storage/object-not-found") throw err;
+        if (b.dataset.source !== "soundcloud" && b.dataset.path) {
+          try {
+            await deleteObject(ref(storage,b.dataset.path));
+          } catch (err) {
+            if (err?.code !== "storage/object-not-found") throw err;
+          }
         }
         await deleteDoc(doc(db,"mixes",b.dataset.id));
         await loadMixes();
