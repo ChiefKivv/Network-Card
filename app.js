@@ -1,13 +1,42 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
-import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app-check.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
-import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
-import { firebaseConfig, APP_CHECK_SITE_KEY } from "./firebase-config.js";
+
+import {
+  initializeAppCheck,
+  ReCaptchaV3Provider
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app-check.js";
+
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+  limit
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
+
+import {
+  getStorage,
+  ref,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
+
+import {
+  firebaseConfig,
+  APP_CHECK_SITE_KEY
+} from "./firebase-config.js";
+
+
+/* =====================================================
+   FIREBASE
+===================================================== */
 
 const app = initializeApp(firebaseConfig);
 
-// App Check is activated only after a real public reCAPTCHA v3 site key is added.
-if (APP_CHECK_SITE_KEY && !APP_CHECK_SITE_KEY.startsWith("PASTE_")) {
+if (
+  APP_CHECK_SITE_KEY &&
+  !APP_CHECK_SITE_KEY.startsWith("PASTE_")
+) {
   initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
     isTokenAutoRefreshEnabled: true
@@ -17,153 +46,946 @@ if (APP_CHECK_SITE_KEY && !APP_CHECK_SITE_KEY.startsWith("PASTE_")) {
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+
+/* =====================================================
+   PAGE ELEMENTS
+===================================================== */
+
 const latestEl = document.querySelector("#latest");
 const listEl = document.querySelector("#mixList");
 const player = document.querySelector("#player");
+
 const modal = document.querySelector("#bookingModal");
 const form = document.querySelector("#bookingForm");
 const status = document.querySelector("#bookingStatus");
-const submitButton = form.querySelector('button[type="submit"]');
-const bookingSuccess = document.querySelector("#bookingSuccess");
-const eventDate = form.querySelector('input[name="eventDate"]');
 
-eventDate.min = new Date().toISOString().slice(0, 10);
+const submitButton =
+  form.querySelector('button[type="submit"]');
 
-function escapeHTML(value="") {
+const bookingSuccess =
+  document.querySelector("#bookingSuccess");
+
+const eventDate =
+  form.querySelector('input[name="eventDate"]');
+
+
+/* =====================================================
+   EVENT DATE
+===================================================== */
+
+eventDate.min =
+  new Date()
+    .toISOString()
+    .slice(0, 10);
+
+
+/* =====================================================
+   HELPERS
+===================================================== */
+
+function escapeHTML(value = "") {
+
   const s = String(value);
-  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+
+  return s.replace(
+    /[&<>"']/g,
+    c =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[c])
+  );
+
 }
+
 
 function closeBookingModal() {
+
   modal.classList.remove("show");
-  modal.setAttribute("aria-hidden", "true");
+
+  modal.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+
 }
 
-function soundCloudPlayerUrl(url) {
-  return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&visual=false`;
-}
 
-function playMix(mix) {
-  if (mix.sourceType === "soundcloud" && mix.soundcloudUrl) {
-    player.pause();
-    player.removeAttribute("src");
-    player.style.display = "none";
-    let sc = document.querySelector("#soundcloudPlayer");
-    if (!sc) {
-      sc = document.createElement("iframe");
-      sc.id = "soundcloudPlayer";
-      sc.width = "100%";
-      sc.height = "166";
-      sc.allow = "autoplay";
-      sc.frameBorder = "0";
-      player.insertAdjacentElement("beforebegin", sc);
-    }
-    sc.src = soundCloudPlayerUrl(mix.soundcloudUrl);
-    sc.hidden = false;
-    sc.scrollIntoView({behavior:"smooth", block:"center"});
-    return;
+/* =====================================================
+   SOUNDCLOUD HELPERS
+===================================================== */
+
+function isSoundCloudUrl(value) {
+
+  try {
+
+    const url =
+      new URL(value);
+
+    const host =
+      url.hostname.toLowerCase();
+
+    return (
+      url.protocol === "https:" &&
+      (
+        host === "soundcloud.com" ||
+        host.endsWith(".soundcloud.com")
+      )
+    );
+
+  } catch {
+
+    return false;
+
   }
 
-  const sc = document.querySelector("#soundcloudPlayer");
-  if (sc) { sc.hidden = true; sc.removeAttribute("src"); }
-  player.style.display = "";
-  player.src = mix.url;
-  player.play().catch(()=>{});
-  player.scrollIntoView({behavior:"smooth", block:"center"});
 }
+
+
+/*
+  Ask SoundCloud for the correct embed.
+
+  SoundCloud's official oEmbed endpoint returns iframe
+  HTML for supported SoundCloud URLs.
+*/
+
+async function getSoundCloudEmbed(url) {
+
+  if (!isSoundCloudUrl(url)) {
+    throw new Error(
+      "Invalid SoundCloud URL."
+    );
+  }
+
+
+  const endpoint =
+    "https://soundcloud.com/oembed" +
+    "?format=json" +
+    "&maxheight=166" +
+    "&auto_play=true" +
+    "&show_comments=false" +
+    "&url=" +
+    encodeURIComponent(url);
+
+
+  const response =
+    await fetch(endpoint);
+
+
+  if (!response.ok) {
+
+    throw new Error(
+      `SoundCloud embed request failed (${response.status}).`
+    );
+
+  }
+
+
+  const data =
+    await response.json();
+
+
+  if (
+    !data ||
+    !data.html
+  ) {
+
+    throw new Error(
+      "SoundCloud did not return an embed."
+    );
+
+  }
+
+
+  return data.html;
+
+}
+
+
+/* =====================================================
+   SOUNDCLOUD PLAYER
+===================================================== */
+
+async function playSoundCloudMix(mix) {
+
+  player.pause();
+
+  player.removeAttribute("src");
+
+  player.style.display =
+    "none";
+
+
+  let container =
+    document.querySelector(
+      "#soundcloudPlayer"
+    );
+
+
+  if (!container) {
+
+    container =
+      document.createElement(
+        "div"
+      );
+
+    container.id =
+      "soundcloudPlayer";
+
+
+    player.insertAdjacentElement(
+      "beforebegin",
+      container
+    );
+
+  }
+
+
+  container.hidden =
+    false;
+
+
+  container.innerHTML = `
+
+    <div class="empty">
+      Loading SoundCloud player…
+    </div>
+
+  `;
+
+
+  container.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+
+
+  try {
+
+    const embedHTML =
+      await getSoundCloudEmbed(
+        mix.soundcloudUrl
+      );
+
+
+    container.innerHTML =
+      embedHTML;
+
+
+    const iframe =
+      container.querySelector(
+        "iframe"
+      );
+
+
+    if (iframe) {
+
+      iframe.width =
+        "100%";
+
+      iframe.height =
+        "166";
+
+      iframe.style.border =
+        "0";
+
+      iframe.setAttribute(
+        "allow",
+        "autoplay"
+      );
+
+      iframe.setAttribute(
+        "scrolling",
+        "no"
+      );
+
+    }
+
+
+  } catch (err) {
+
+    console.error(
+      "SoundCloud player failed",
+      err
+    );
+
+
+    /*
+      Do not display SoundCloud's broken white iframe.
+
+      Give the visitor a direct SoundCloud button instead.
+    */
+
+    container.innerHTML = `
+
+      <div class="latest-card">
+
+        <strong>
+          ${escapeHTML(mix.name)}
+        </strong>
+
+        <p class="muted">
+          This SoundCloud link cannot be embedded directly.
+        </p>
+
+        <a
+          class="action primary"
+          href="${escapeHTML(mix.soundcloudUrl)}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          ▶ OPEN IN SOUNDCLOUD
+        </a>
+
+      </div>
+
+    `;
+
+  }
+
+}
+
+
+/* =====================================================
+   PLAY MIX
+===================================================== */
+
+async function playMix(mix) {
+
+  /*
+    SOUNDCLOUD
+  */
+
+  if (
+    mix.sourceType === "soundcloud" &&
+    mix.soundcloudUrl
+  ) {
+
+    await playSoundCloudMix(
+      mix
+    );
+
+    return;
+
+  }
+
+
+  /*
+    DIRECT UPLOAD
+  */
+
+  const sc =
+    document.querySelector(
+      "#soundcloudPlayer"
+    );
+
+
+  if (sc) {
+
+    sc.hidden =
+      true;
+
+    sc.innerHTML =
+      "";
+
+  }
+
+
+  player.style.display =
+    "";
+
+
+  if (!mix.url) {
+
+    console.error(
+      "Upload mix has no playable URL",
+      mix
+    );
+
+    return;
+
+  }
+
+
+  player.src =
+    mix.url;
+
+
+  try {
+
+    await player.play();
+
+  } catch (err) {
+
+    console.warn(
+      "Browser prevented autoplay",
+      err
+    );
+
+  }
+
+
+  player.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+
+}
+
+
+/* =====================================================
+   LOAD MIXES
+===================================================== */
 
 async function loadMixes() {
+
   try {
-    const snap = await getDocs(query(collection(db, "mixes"), orderBy("createdAt", "desc"), limit(50)));
-    const mixes = [];
-    for (const docSnap of snap.docs) {
-      const data = docSnap.data();
-      const mix = {...data, id: docSnap.id};
-      if (data.sourceType === "soundcloud" && data.soundcloudUrl) {
-        mixes.push(mix);
+
+    const snap =
+      await getDocs(
+
+        query(
+
+          collection(
+            db,
+            "mixes"
+          ),
+
+          orderBy(
+            "createdAt",
+            "desc"
+          ),
+
+          limit(50)
+
+        )
+
+      );
+
+
+    const mixes =
+      [];
+
+
+    for (
+      const docSnap
+      of snap.docs
+    ) {
+
+      const data =
+        docSnap.data();
+
+
+      const mix = {
+        ...data,
+        id: docSnap.id
+      };
+
+
+      /*
+        SOUNDCLOUD MIX
+
+        Keep the SoundCloud URL exactly as it is stored.
+        We will let SoundCloud's oEmbed service determine
+        the appropriate player.
+      */
+
+      if (
+        data.sourceType === "soundcloud" &&
+        data.soundcloudUrl
+      ) {
+
+        mixes.push(
+          mix
+        );
+
         continue;
+
       }
-      if (!data.storagePath) continue;
+
+
+      /*
+        DIRECT FIREBASE STORAGE UPLOAD
+      */
+
+      if (
+        !data.storagePath
+      ) {
+
+        continue;
+
+      }
+
+
       try {
-        mix.url = await getDownloadURL(ref(storage, data.storagePath));
-        mix.sourceType = mix.sourceType || "upload";
-        mixes.push(mix);
+
+        mix.url =
+          await getDownloadURL(
+
+            ref(
+              storage,
+              data.storagePath
+            )
+
+          );
+
+
+        mix.sourceType =
+          mix.sourceType ||
+          "upload";
+
+
+        mixes.push(
+          mix
+        );
+
+
       } catch (err) {
-        console.warn("Skipped unavailable mix", docSnap.id, err);
+
+        console.warn(
+          "Skipped unavailable mix",
+          docSnap.id,
+          err
+        );
+
       }
+
     }
 
-    const latest = mixes.find(m => m.isLatest) || mixes[0];
-    latestEl.innerHTML = latest
-      ? `<div class="latest-card"><span class="eyebrow">LATEST MIX</span><strong>${escapeHTML(latest.name)}</strong><button class="play-latest" data-id="${escapeHTML(latest.id)}">▶ PLAY</button></div>`
-      : `<div class="empty">No mixes have been published yet.</div>`;
 
-    listEl.innerHTML = mixes.length
-      ? mixes.filter(m => !latest || m.id !== latest.id).map(m => `<button class="mix-row" data-id="${escapeHTML(m.id)}"><span>${escapeHTML(m.name)}</span><b>▶</b></button>`).join("")
-      : `<div class="empty">Your mixes will appear here.</div>`;
+    /* =================================================
+       FIND LATEST MIX
+    ================================================= */
 
-    const byId = new Map(mixes.map(m => [m.id, m]));
-    document.querySelectorAll("[data-id]").forEach(btn => btn.addEventListener("click", () => {
-      const mix = byId.get(btn.dataset.id);
-      if (mix) playMix(mix);
-    }));
+    const latest =
+      mixes.find(
+        m => m.isLatest
+      ) ||
+      mixes[0];
+
+
+    /* =================================================
+       LATEST MIX CARD
+    ================================================= */
+
+    latestEl.innerHTML =
+      latest
+
+        ? `
+
+          <div class="latest-card">
+
+            <span class="eyebrow">
+              LATEST MIX
+            </span>
+
+            <strong>
+              ${escapeHTML(
+                latest.name
+              )}
+            </strong>
+
+            <button
+              class="play-latest"
+              data-mix-id="${escapeHTML(
+                latest.id
+              )}"
+              type="button"
+            >
+              ▶ PLAY
+            </button>
+
+          </div>
+
+        `
+
+        : `
+
+          <div class="empty">
+            No mixes have been published yet.
+          </div>
+
+        `;
+
+
+    /* =================================================
+       MORE MIXES
+    ================================================= */
+
+    const otherMixes =
+      mixes.filter(
+        m =>
+          !latest ||
+          m.id !== latest.id
+      );
+
+
+    listEl.innerHTML =
+      otherMixes.length
+
+        ? otherMixes
+
+            .map(
+              m => `
+
+                <button
+                  class="mix-row"
+                  data-mix-id="${escapeHTML(
+                    m.id
+                  )}"
+                  type="button"
+                >
+
+                  <span>
+                    ${escapeHTML(
+                      m.name
+                    )}
+                  </span>
+
+                  <b>
+                    ▶
+                  </b>
+
+                </button>
+
+              `
+            )
+
+            .join("")
+
+        : `
+
+          <div class="empty">
+            More mixes coming soon.
+          </div>
+
+        `;
+
+
+    /* =================================================
+       CONNECT PLAY BUTTONS
+    ================================================= */
+
+    const byId =
+      new Map(
+
+        mixes.map(
+          m => [
+            m.id,
+            m
+          ]
+        )
+
+      );
+
+
+    document
+      .querySelectorAll(
+        "[data-mix-id]"
+      )
+      .forEach(
+        btn => {
+
+          btn.addEventListener(
+            "click",
+            async () => {
+
+              const mix =
+                byId.get(
+                  btn.dataset.mixId
+                );
+
+
+              if (mix) {
+
+                await playMix(
+                  mix
+                );
+
+              }
+
+            }
+          );
+
+        }
+      );
+
+
   } catch (err) {
-    console.error("Mix load failed", err);
-    latestEl.innerHTML = "";
-    listEl.innerHTML = `<div class="empty">Mix library is unavailable. Check Firebase configuration, App Check, Firestore, and Storage.</div>`;
+
+    console.error(
+      "Mix load failed",
+      err
+    );
+
+
+    latestEl.innerHTML =
+      "";
+
+
+    listEl.innerHTML = `
+
+      <div class="empty">
+        Mix library is unavailable.
+        Please try again shortly.
+      </div>
+
+    `;
+
   }
+
 }
 
-document.querySelector("#bookingOpen").onclick = () => {
-  bookingSuccess.hidden = true;
-  status.textContent = "";
-  submitButton.hidden = false;
-  modal.classList.add("show");
-  modal.setAttribute("aria-hidden", "false");
-};
-document.querySelector("#bookingClose").onclick = closeBookingModal;
-modal.addEventListener("click", e => { if (e.target === modal) closeBookingModal(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && modal.classList.contains("show")) closeBookingModal(); });
 
-form.addEventListener("submit", async e => {
-  e.preventDefault();
-  if (!form.reportValidity()) return;
+/* =====================================================
+   BOOKING MODAL
+===================================================== */
 
-  const fd = new FormData(form);
-  // Honeypot: normal visitors never fill this field.
-  if ((fd.get("website") || "").trim()) {
-    status.textContent = "Unable to submit right now. Please call/text 347-771-7483.";
-    return;
+document
+  .querySelector(
+    "#bookingOpen"
+  )
+  .onclick =
+    () => {
+
+      bookingSuccess.hidden =
+        true;
+
+      status.textContent =
+        "";
+
+      submitButton.hidden =
+        false;
+
+      modal.classList.add(
+        "show"
+      );
+
+      modal.setAttribute(
+        "aria-hidden",
+        "false"
+      );
+
+    };
+
+
+document
+  .querySelector(
+    "#bookingClose"
+  )
+  .onclick =
+    closeBookingModal;
+
+
+modal.addEventListener(
+  "click",
+  e => {
+
+    if (
+      e.target === modal
+    ) {
+
+      closeBookingModal();
+
+    }
+
   }
-  fd.delete("website");
+);
 
-  const data = Object.fromEntries(fd.entries());
-  data.genre = (data.genre || "Open Format").trim();
-  data.eventType = data.eventType.trim();
-  data.requesterName = data.requesterName.trim();
-  data.email = data.email.trim();
-  data.phone = data.phone.trim();
-  data.details = (data.details || "").trim();
-  if (!data.details) delete data.details;
-  data.createdAt = new Date().toISOString();
-  data.status = "NEW";
 
-  status.textContent = "Submitting…";
-  submitButton.disabled = true;
+document.addEventListener(
+  "keydown",
+  e => {
 
-  try {
-    await addDoc(collection(db, "bookings"), data);
-    form.reset();
-    eventDate.min = new Date().toISOString().slice(0, 10);
-    status.textContent = "";
-    submitButton.hidden = true;
-    bookingSuccess.hidden = false;
-  } catch (err) {
-    console.error("Booking submission failed", err);
-    status.textContent = "Unable to submit right now. Please call/text 347-771-7483.";
-  } finally {
-    submitButton.disabled = false;
+    if (
+      e.key === "Escape" &&
+      modal.classList.contains(
+        "show"
+      )
+    ) {
+
+      closeBookingModal();
+
+    }
+
   }
-});
+);
+
+
+/* =====================================================
+   BOOKING FORM
+===================================================== */
+
+form.addEventListener(
+  "submit",
+  async e => {
+
+    e.preventDefault();
+
+
+    if (
+      !form.reportValidity()
+    ) {
+
+      return;
+
+    }
+
+
+    const fd =
+      new FormData(
+        form
+      );
+
+
+    /* Honeypot */
+
+    if (
+      (
+        fd.get(
+          "website"
+        ) || ""
+      ).trim()
+    ) {
+
+      status.textContent =
+        "Unable to submit right now. Please call/text 347-771-7483.";
+
+      return;
+
+    }
+
+
+    fd.delete(
+      "website"
+    );
+
+
+    const data =
+      Object.fromEntries(
+        fd.entries()
+      );
+
+
+    data.genre =
+      (
+        data.genre ||
+        "Open Format"
+      ).trim();
+
+
+    data.eventType =
+      data.eventType.trim();
+
+
+    data.requesterName =
+      data.requesterName.trim();
+
+
+    data.email =
+      data.email.trim();
+
+
+    data.phone =
+      data.phone.trim();
+
+
+    data.details =
+      (
+        data.details ||
+        ""
+      ).trim();
+
+
+    if (
+      !data.details
+    ) {
+
+      delete data.details;
+
+    }
+
+
+    data.createdAt =
+      new Date()
+        .toISOString();
+
+
+    data.status =
+      "NEW";
+
+
+    status.textContent =
+      "Submitting…";
+
+
+    submitButton.disabled =
+      true;
+
+
+    try {
+
+      await addDoc(
+        collection(
+          db,
+          "bookings"
+        ),
+        data
+      );
+
+
+      form.reset();
+
+
+      eventDate.min =
+        new Date()
+          .toISOString()
+          .slice(
+            0,
+            10
+          );
+
+
+      status.textContent =
+        "";
+
+
+      submitButton.hidden =
+        true;
+
+
+      bookingSuccess.hidden =
+        false;
+
+
+    } catch (err) {
+
+      console.error(
+        "Booking submission failed",
+        err
+      );
+
+
+      status.textContent =
+        "Unable to submit right now. Please call/text 347-771-7483.";
+
+
+    } finally {
+
+      submitButton.disabled =
+        false;
+
+    }
+
+  }
+);
+
+
+/* =====================================================
+   START
+===================================================== */
 
 loadMixes();
