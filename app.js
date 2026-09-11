@@ -105,13 +105,11 @@ function closeBookingModal() {
 
 
 /* =====================================================
-   SOUNDCLOUD
+   SOUNDCLOUD HELPERS
 ===================================================== */
 
 function isSoundCloudUrl(value) {
-
   try {
-
     const url = new URL(value);
 
     const host =
@@ -128,19 +126,16 @@ function isSoundCloudUrl(value) {
     );
 
   } catch {
-
     return false;
-
   }
 }
 
 
 function buildSoundCloudPlayerUrl(trackUrl) {
-
   const params =
     new URLSearchParams({
       url: trackUrl,
-      auto_play: "true",
+      auto_play: "false",
       hide_related: "true",
       show_comments: "false",
       show_user: "true",
@@ -148,7 +143,6 @@ function buildSoundCloudPlayerUrl(trackUrl) {
       show_teaser: "false",
       visual: "false"
     });
-
 
   return (
     "https://w.soundcloud.com/player/?" +
@@ -162,7 +156,6 @@ function buildSoundCloudPlayerUrl(trackUrl) {
 ===================================================== */
 
 function showSoundCloudFallback(mix) {
-
   soundCloudHost.hidden = false;
 
   soundCloudHost.innerHTML = `
@@ -173,7 +166,7 @@ function showSoundCloudFallback(mix) {
       </strong>
 
       <p class="muted">
-        SoundCloud could not start this mix automatically.
+        This mix could not be played directly on this page.
       </p>
 
       <a
@@ -200,62 +193,49 @@ function playSoundCloudMix(mix) {
     !mix.soundcloudUrl ||
     !isSoundCloudUrl(mix.soundcloudUrl)
   ) {
-
     showSoundCloudFallback(mix);
-
     return;
   }
 
 
-  /* Stop Firebase audio */
+  /* Stop direct-upload audio */
 
   player.pause();
-
   player.removeAttribute("src");
-
   player.style.display = "none";
 
 
-  /* Clear previous widget */
+  /* Clear old SoundCloud player */
 
   soundCloudHost.innerHTML = "";
-
   soundCloudHost.hidden = false;
 
 
-  /* Create official SoundCloud iframe */
+  /* Create SoundCloud iframe */
 
   const iframe =
     document.createElement("iframe");
 
-
   iframe.id =
     "soundcloudPlayer";
-
 
   iframe.width =
     "100%";
 
-
   iframe.height =
     "166";
-
 
   iframe.scrolling =
     "no";
 
-
   iframe.frameBorder =
     "0";
-
 
   iframe.allow =
     "autoplay";
 
-
   iframe.title =
     `SoundCloud player - ${mix.name}`;
-
 
   iframe.src =
     buildSoundCloudPlayerUrl(
@@ -274,18 +254,15 @@ function playSoundCloudMix(mix) {
   });
 
 
-  /* Official SoundCloud Widget API */
+  /* If widget API is not available, leave iframe visible */
 
   if (
     !window.SC ||
     !window.SC.Widget
   ) {
-
-    console.error(
-      "SoundCloud Widget API did not load."
+    console.warn(
+      "SoundCloud Widget API did not load. Leaving iframe visible."
     );
-
-    showSoundCloudFallback(mix);
 
     return;
   }
@@ -297,79 +274,103 @@ function playSoundCloudMix(mix) {
     );
 
 
-  let ready =
-    false;
-
-
-  const timeout =
-    setTimeout(
-      () => {
-
-        if (!ready) {
-
-          console.error(
-            "SoundCloud player timed out."
-          );
-
-          showSoundCloudFallback(
-            mix
-          );
-
-        }
-
-      },
-      10000
-    );
-
+  /* =================================================
+     READY
+  ================================================= */
 
   widget.bind(
     window.SC.Widget.Events.READY,
     () => {
 
-      ready = true;
-
-      clearTimeout(
-        timeout
+      console.log(
+        "SoundCloud widget READY:",
+        mix.soundcloudUrl
       );
 
 
       /*
-        The visitor already clicked PLAY.
-
-        Ask SoundCloud to begin playing once
-        the iframe is ready.
+        User clicked PLAY already.
+        Try to start playback.
       */
 
       try {
-
         widget.play();
-
       } catch (err) {
-
         console.warn(
           "SoundCloud play request failed.",
           err
         );
-
       }
 
     }
   );
 
 
+  /* =================================================
+     PLAY
+  ================================================= */
+
   widget.bind(
-    window.SC.Widget.Events.ERROR,
+    window.SC.Widget.Events.PLAY,
     () => {
 
-      clearTimeout(
-        timeout
+      console.log(
+        "SoundCloud playback started."
       );
 
+    }
+  );
+
+
+  /* =================================================
+     PAUSE
+  ================================================= */
+
+  widget.bind(
+    window.SC.Widget.Events.PAUSE,
+    () => {
+
+      console.log(
+        "SoundCloud playback paused."
+      );
+
+    }
+  );
+
+
+  /* =================================================
+     FINISH
+  ================================================= */
+
+  widget.bind(
+    window.SC.Widget.Events.FINISH,
+    () => {
+
+      console.log(
+        "SoundCloud playback finished."
+      );
+
+    }
+  );
+
+
+  /* =================================================
+     ERROR
+  ================================================= */
+
+  widget.bind(
+    window.SC.Widget.Events.ERROR,
+    error => {
 
       console.error(
-        "SoundCloud widget reported a playback error."
+        "SoundCloud widget ERROR:",
+        error
       );
 
+      /*
+        Only replace the player if SoundCloud itself
+        reports an actual widget error.
+      */
 
       showSoundCloudFallback(
         mix
@@ -377,7 +378,6 @@ function playSoundCloudMix(mix) {
 
     }
   );
-
 }
 
 
@@ -386,7 +386,6 @@ function playSoundCloudMix(mix) {
 ===================================================== */
 
 async function playMix(mix) {
-
 
   /* SOUNDCLOUD */
 
@@ -406,16 +405,10 @@ async function playMix(mix) {
 
   /* DIRECT FIREBASE AUDIO */
 
-  soundCloudHost.hidden =
-    true;
+  soundCloudHost.hidden = true;
+  soundCloudHost.innerHTML = "";
 
-
-  soundCloudHost.innerHTML =
-    "";
-
-
-  player.style.display =
-    "";
+  player.style.display = "";
 
 
   if (!mix.url) {
@@ -452,7 +445,6 @@ async function playMix(mix) {
     behavior: "smooth",
     block: "center"
   });
-
 }
 
 
@@ -466,23 +458,17 @@ async function loadMixes() {
 
     const snap =
       await getDocs(
-
         query(
-
           collection(
             db,
             "mixes"
           ),
-
           orderBy(
             "createdAt",
             "desc"
           ),
-
           limit(50)
-
         )
-
       );
 
 
@@ -521,7 +507,7 @@ async function loadMixes() {
       }
 
 
-      /* FIREBASE AUDIO */
+      /* DIRECT UPLOAD */
 
       if (!data.storagePath) {
         continue;
@@ -532,12 +518,10 @@ async function loadMixes() {
 
         mix.url =
           await getDownloadURL(
-
             ref(
               storage,
               data.storagePath
             )
-
           );
 
 
@@ -565,7 +549,7 @@ async function loadMixes() {
 
 
     /* =================================================
-       LATEST
+       LATEST MIX
     ================================================= */
 
     const latest =
@@ -579,7 +563,6 @@ async function loadMixes() {
       latest
 
         ? `
-
           <div class="latest-card">
 
             <span class="eyebrow">
@@ -603,15 +586,12 @@ async function loadMixes() {
             </button>
 
           </div>
-
         `
 
         : `
-
           <div class="empty">
             No mixes have been published yet.
           </div>
-
         `;
 
 
@@ -633,7 +613,6 @@ async function loadMixes() {
         ? otherMixes
             .map(
               m => `
-
                 <button
                   class="mix-row"
                   data-mix-id="${escapeHTML(
@@ -653,34 +632,29 @@ async function loadMixes() {
                   </b>
 
                 </button>
-
               `
             )
             .join("")
 
         : `
-
           <div class="empty">
             More mixes coming soon.
           </div>
-
         `;
 
 
     /* =================================================
-       PLAY BUTTONS
+       CONNECT PLAY BUTTONS
     ================================================= */
 
     const byId =
       new Map(
-
         mixes.map(
           m => [
             m.id,
             m
           ]
         )
-
       );
 
 
@@ -729,16 +703,13 @@ async function loadMixes() {
 
 
     listEl.innerHTML = `
-
       <div class="empty">
         Mix library is unavailable.
         Please try again shortly.
       </div>
-
     `;
 
   }
-
 }
 
 
@@ -747,9 +718,7 @@ async function loadMixes() {
 ===================================================== */
 
 document
-  .querySelector(
-    "#bookingOpen"
-  )
+  .querySelector("#bookingOpen")
   .onclick =
     () => {
 
@@ -775,9 +744,7 @@ document
 
 
 document
-  .querySelector(
-    "#bookingClose"
-  )
+  .querySelector("#bookingClose")
   .onclick =
     closeBookingModal;
 
@@ -786,12 +753,8 @@ modal.addEventListener(
   "click",
   e => {
 
-    if (
-      e.target === modal
-    ) {
-
+    if (e.target === modal) {
       closeBookingModal();
-
     }
 
   }
@@ -804,9 +767,7 @@ document.addEventListener(
 
     if (
       e.key === "Escape" &&
-      modal.classList.contains(
-        "show"
-      )
+      modal.classList.contains("show")
     ) {
 
       closeBookingModal();
@@ -828,28 +789,20 @@ form.addEventListener(
     e.preventDefault();
 
 
-    if (
-      !form.reportValidity()
-    ) {
-
+    if (!form.reportValidity()) {
       return;
-
     }
 
 
     const fd =
-      new FormData(
-        form
-      );
+      new FormData(form);
 
 
     /* Honeypot */
 
     if (
       (
-        fd.get(
-          "website"
-        ) || ""
+        fd.get("website") || ""
       ).trim()
     ) {
 
@@ -902,12 +855,8 @@ form.addEventListener(
       ).trim();
 
 
-    if (
-      !data.details
-    ) {
-
+    if (!data.details) {
       delete data.details;
-
     }
 
 
@@ -945,10 +894,7 @@ form.addEventListener(
       eventDate.min =
         new Date()
           .toISOString()
-          .slice(
-            0,
-            10
-          );
+          .slice(0, 10);
 
 
       status.textContent =
