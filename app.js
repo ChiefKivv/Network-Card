@@ -54,6 +54,7 @@ const storage = getStorage(app);
 const latestEl = document.querySelector("#latest");
 const listEl = document.querySelector("#mixList");
 const player = document.querySelector("#player");
+const soundCloudHost = document.querySelector("#soundcloudHost");
 
 const modal = document.querySelector("#bookingModal");
 const form = document.querySelector("#bookingForm");
@@ -80,9 +81,7 @@ eventDate.min =
 ===================================================== */
 
 function escapeHTML(value = "") {
-  const s = String(value);
-
-  return s.replace(
+  return String(value).replace(
     /[&<>"']/g,
     c => ({
       "&": "&amp;",
@@ -106,11 +105,13 @@ function closeBookingModal() {
 
 
 /* =====================================================
-   SOUNDCLOUD URL CHECK
+   SOUNDCLOUD
 ===================================================== */
 
 function isSoundCloudUrl(value) {
+
   try {
+
     const url = new URL(value);
 
     const host =
@@ -120,187 +121,263 @@ function isSoundCloudUrl(value) {
       url.protocol === "https:" &&
       (
         host === "soundcloud.com" ||
+        host === "www.soundcloud.com" ||
+        host === "m.soundcloud.com" ||
         host.endsWith(".soundcloud.com")
       )
     );
 
   } catch {
+
     return false;
+
   }
 }
 
 
-/* =====================================================
-   SOUNDCLOUD OEMBED
-===================================================== */
+function buildSoundCloudPlayerUrl(trackUrl) {
 
-async function getSoundCloudEmbed(url) {
-
-  if (!isSoundCloudUrl(url)) {
-    throw new Error(
-      "Invalid SoundCloud URL."
-    );
-  }
-
-
-  const endpoint =
-    "https://soundcloud.com/oembed" +
-    "?format=json" +
-    "&maxheight=166" +
-    "&auto_play=false" +
-    "&show_comments=false" +
-    "&url=" +
-    encodeURIComponent(url);
+  const params =
+    new URLSearchParams({
+      url: trackUrl,
+      auto_play: "true",
+      hide_related: "true",
+      show_comments: "false",
+      show_user: "true",
+      show_reposts: "false",
+      show_teaser: "false",
+      visual: "false"
+    });
 
 
-  const response =
-    await fetch(endpoint);
-
-
-  if (!response.ok) {
-    throw new Error(
-      `SoundCloud returned ${response.status}.`
-    );
-  }
-
-
-  const data =
-    await response.json();
-
-
-  if (!data?.html) {
-    throw new Error(
-      "SoundCloud did not return a playable embed."
-    );
-  }
-
-
-  return data.html;
+  return (
+    "https://w.soundcloud.com/player/?" +
+    params.toString()
+  );
 }
 
 
 /* =====================================================
-   SOUNDCLOUD PLAYER
+   SOUNDCLOUD FALLBACK
 ===================================================== */
 
-async function playSoundCloudMix(mix) {
+function showSoundCloudFallback(mix) {
+
+  soundCloudHost.hidden = false;
+
+  soundCloudHost.innerHTML = `
+    <div class="latest-card">
+
+      <strong>
+        ${escapeHTML(mix.name)}
+      </strong>
+
+      <p class="muted">
+        SoundCloud could not start this mix automatically.
+      </p>
+
+      <a
+        class="action primary"
+        href="${escapeHTML(mix.soundcloudUrl)}"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        ▶ OPEN IN SOUNDCLOUD
+      </a>
+
+    </div>
+  `;
+}
+
+
+/* =====================================================
+   PLAY SOUNDCLOUD MIX
+===================================================== */
+
+function playSoundCloudMix(mix) {
+
+  if (
+    !mix.soundcloudUrl ||
+    !isSoundCloudUrl(mix.soundcloudUrl)
+  ) {
+
+    showSoundCloudFallback(mix);
+
+    return;
+  }
+
+
+  /* Stop Firebase audio */
 
   player.pause();
+
   player.removeAttribute("src");
+
   player.style.display = "none";
 
 
-  let container =
-    document.querySelector(
-      "#soundcloudPlayer"
+  /* Clear previous widget */
+
+  soundCloudHost.innerHTML = "";
+
+  soundCloudHost.hidden = false;
+
+
+  /* Create official SoundCloud iframe */
+
+  const iframe =
+    document.createElement("iframe");
+
+
+  iframe.id =
+    "soundcloudPlayer";
+
+
+  iframe.width =
+    "100%";
+
+
+  iframe.height =
+    "166";
+
+
+  iframe.scrolling =
+    "no";
+
+
+  iframe.frameBorder =
+    "0";
+
+
+  iframe.allow =
+    "autoplay";
+
+
+  iframe.title =
+    `SoundCloud player - ${mix.name}`;
+
+
+  iframe.src =
+    buildSoundCloudPlayerUrl(
+      mix.soundcloudUrl
     );
 
 
-  if (!container) {
-
-    container =
-      document.createElement("div");
-
-    container.id =
-      "soundcloudPlayer";
+  soundCloudHost.appendChild(
+    iframe
+  );
 
 
-    player.insertAdjacentElement(
-      "beforebegin",
-      container
-    );
-
-  }
-
-
-  container.hidden = false;
-
-
-  container.innerHTML = `
-    <div class="empty">
-      Loading SoundCloud player…
-    </div>
-  `;
-
-
-  container.scrollIntoView({
+  soundCloudHost.scrollIntoView({
     behavior: "smooth",
     block: "center"
   });
 
 
-  try {
+  /* Official SoundCloud Widget API */
 
-    const embedHTML =
-      await getSoundCloudEmbed(
-        mix.soundcloudUrl
-      );
-
-
-    container.innerHTML =
-      embedHTML;
-
-
-    const iframe =
-      container.querySelector("iframe");
-
-
-    if (iframe) {
-
-      iframe.width = "100%";
-      iframe.height = "166";
-      iframe.style.border = "0";
-
-      iframe.setAttribute(
-        "allow",
-        "autoplay"
-      );
-
-      iframe.setAttribute(
-        "scrolling",
-        "no"
-      );
-
-      iframe.setAttribute(
-        "title",
-        `SoundCloud player - ${mix.name}`
-      );
-
-    }
-
-
-  } catch (err) {
+  if (
+    !window.SC ||
+    !window.SC.Widget
+  ) {
 
     console.error(
-      "SoundCloud embed failed",
-      err
+      "SoundCloud Widget API did not load."
+    );
+
+    showSoundCloudFallback(mix);
+
+    return;
+  }
+
+
+  const widget =
+    window.SC.Widget(
+      iframe
     );
 
 
-    container.innerHTML = `
-      <div class="latest-card">
+  let ready =
+    false;
 
-        <strong>
-          ${escapeHTML(mix.name)}
-        </strong>
 
-        <p class="muted">
-          This mix could not be played directly on this page.
-        </p>
+  const timeout =
+    setTimeout(
+      () => {
 
-        <a
-          class="action primary"
-          href="${escapeHTML(mix.soundcloudUrl)}"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          ▶ OPEN IN SOUNDCLOUD
-        </a>
+        if (!ready) {
 
-      </div>
-    `;
+          console.error(
+            "SoundCloud player timed out."
+          );
 
-  }
+          showSoundCloudFallback(
+            mix
+          );
+
+        }
+
+      },
+      10000
+    );
+
+
+  widget.bind(
+    window.SC.Widget.Events.READY,
+    () => {
+
+      ready = true;
+
+      clearTimeout(
+        timeout
+      );
+
+
+      /*
+        The visitor already clicked PLAY.
+
+        Ask SoundCloud to begin playing once
+        the iframe is ready.
+      */
+
+      try {
+
+        widget.play();
+
+      } catch (err) {
+
+        console.warn(
+          "SoundCloud play request failed.",
+          err
+        );
+
+      }
+
+    }
+  );
+
+
+  widget.bind(
+    window.SC.Widget.Events.ERROR,
+    () => {
+
+      clearTimeout(
+        timeout
+      );
+
+
+      console.error(
+        "SoundCloud widget reported a playback error."
+      );
+
+
+      showSoundCloudFallback(
+        mix
+      );
+
+    }
+  );
+
 }
 
 
@@ -310,39 +387,46 @@ async function playSoundCloudMix(mix) {
 
 async function playMix(mix) {
 
+
+  /* SOUNDCLOUD */
+
   if (
     mix.sourceType === "soundcloud" &&
     mix.soundcloudUrl
   ) {
 
-    await playSoundCloudMix(mix);
-
-    return;
-  }
-
-
-  const sc =
-    document.querySelector(
-      "#soundcloudPlayer"
-    );
-
-
-  if (sc) {
-    sc.hidden = true;
-    sc.innerHTML = "";
-  }
-
-
-  player.style.display = "";
-
-
-  if (!mix.url) {
-    console.error(
-      "No playable URL for mix",
+    playSoundCloudMix(
       mix
     );
 
     return;
+
+  }
+
+
+  /* DIRECT FIREBASE AUDIO */
+
+  soundCloudHost.hidden =
+    true;
+
+
+  soundCloudHost.innerHTML =
+    "";
+
+
+  player.style.display =
+    "";
+
+
+  if (!mix.url) {
+
+    console.error(
+      "No playable URL for this mix.",
+      mix
+    );
+
+    return;
+
   }
 
 
@@ -351,12 +435,16 @@ async function playMix(mix) {
 
 
   try {
+
     await player.play();
+
   } catch (err) {
+
     console.warn(
-      "Autoplay prevented",
+      "Browser prevented playback.",
       err
     );
+
   }
 
 
@@ -364,6 +452,7 @@ async function playMix(mix) {
     behavior: "smooth",
     block: "center"
   });
+
 }
 
 
@@ -397,7 +486,8 @@ async function loadMixes() {
       );
 
 
-    const mixes = [];
+    const mixes =
+      [];
 
 
     for (
@@ -422,13 +512,16 @@ async function loadMixes() {
         data.soundcloudUrl
       ) {
 
-        mixes.push(mix);
+        mixes.push(
+          mix
+        );
 
         continue;
+
       }
 
 
-      /* DIRECT UPLOAD */
+      /* FIREBASE AUDIO */
 
       if (!data.storagePath) {
         continue;
@@ -439,10 +532,12 @@ async function loadMixes() {
 
         mix.url =
           await getDownloadURL(
+
             ref(
               storage,
               data.storagePath
             )
+
           );
 
 
@@ -451,7 +546,9 @@ async function loadMixes() {
           "upload";
 
 
-        mixes.push(mix);
+        mixes.push(
+          mix
+        );
 
 
       } catch (err) {
@@ -467,6 +564,10 @@ async function loadMixes() {
     }
 
 
+    /* =================================================
+       LATEST
+    ================================================= */
+
     const latest =
       mixes.find(
         m => m.isLatest
@@ -478,6 +579,7 @@ async function loadMixes() {
       latest
 
         ? `
+
           <div class="latest-card">
 
             <span class="eyebrow">
@@ -485,26 +587,37 @@ async function loadMixes() {
             </span>
 
             <strong>
-              ${escapeHTML(latest.name)}
+              ${escapeHTML(
+                latest.name
+              )}
             </strong>
 
             <button
               class="play-latest"
-              data-mix-id="${escapeHTML(latest.id)}"
+              data-mix-id="${escapeHTML(
+                latest.id
+              )}"
               type="button"
             >
               ▶ PLAY
             </button>
 
           </div>
+
         `
 
         : `
+
           <div class="empty">
             No mixes have been published yet.
           </div>
+
         `;
 
+
+    /* =================================================
+       MORE MIXES
+    ================================================= */
 
     const otherMixes =
       mixes.filter(
@@ -520,38 +633,54 @@ async function loadMixes() {
         ? otherMixes
             .map(
               m => `
+
                 <button
                   class="mix-row"
-                  data-mix-id="${escapeHTML(m.id)}"
+                  data-mix-id="${escapeHTML(
+                    m.id
+                  )}"
                   type="button"
                 >
 
                   <span>
-                    ${escapeHTML(m.name)}
+                    ${escapeHTML(
+                      m.name
+                    )}
                   </span>
 
-                  <b>▶</b>
+                  <b>
+                    ▶
+                  </b>
 
                 </button>
+
               `
             )
             .join("")
 
         : `
+
           <div class="empty">
             More mixes coming soon.
           </div>
+
         `;
 
 
+    /* =================================================
+       PLAY BUTTONS
+    ================================================= */
+
     const byId =
       new Map(
+
         mixes.map(
           m => [
             m.id,
             m
           ]
         )
+
       );
 
 
@@ -573,7 +702,11 @@ async function loadMixes() {
 
 
               if (mix) {
-                await playMix(mix);
+
+                await playMix(
+                  mix
+                );
+
               }
 
             }
@@ -596,10 +729,12 @@ async function loadMixes() {
 
 
     listEl.innerHTML = `
+
       <div class="empty">
         Mix library is unavailable.
         Please try again shortly.
       </div>
+
     `;
 
   }
@@ -612,13 +747,20 @@ async function loadMixes() {
 ===================================================== */
 
 document
-  .querySelector("#bookingOpen")
+  .querySelector(
+    "#bookingOpen"
+  )
   .onclick =
     () => {
 
-      bookingSuccess.hidden = true;
-      status.textContent = "";
-      submitButton.hidden = false;
+      bookingSuccess.hidden =
+        true;
+
+      status.textContent =
+        "";
+
+      submitButton.hidden =
+        false;
 
       modal.classList.add(
         "show"
@@ -633,7 +775,9 @@ document
 
 
 document
-  .querySelector("#bookingClose")
+  .querySelector(
+    "#bookingClose"
+  )
   .onclick =
     closeBookingModal;
 
@@ -642,8 +786,12 @@ modal.addEventListener(
   "click",
   e => {
 
-    if (e.target === modal) {
+    if (
+      e.target === modal
+    ) {
+
       closeBookingModal();
+
     }
 
   }
@@ -656,7 +804,9 @@ document.addEventListener(
 
     if (
       e.key === "Escape" &&
-      modal.classList.contains("show")
+      modal.classList.contains(
+        "show"
+      )
     ) {
 
       closeBookingModal();
@@ -678,18 +828,28 @@ form.addEventListener(
     e.preventDefault();
 
 
-    if (!form.reportValidity()) {
+    if (
+      !form.reportValidity()
+    ) {
+
       return;
+
     }
 
 
     const fd =
-      new FormData(form);
+      new FormData(
+        form
+      );
 
+
+    /* Honeypot */
 
     if (
       (
-        fd.get("website") || ""
+        fd.get(
+          "website"
+        ) || ""
       ).trim()
     ) {
 
@@ -697,6 +857,7 @@ form.addEventListener(
         "Unable to submit right now. Please call/text 347-771-7483.";
 
       return;
+
     }
 
 
@@ -741,8 +902,12 @@ form.addEventListener(
       ).trim();
 
 
-    if (!data.details) {
+    if (
+      !data.details
+    ) {
+
       delete data.details;
+
     }
 
 
@@ -780,14 +945,22 @@ form.addEventListener(
       eventDate.min =
         new Date()
           .toISOString()
-          .slice(0, 10);
+          .slice(
+            0,
+            10
+          );
 
 
-      status.textContent = "";
+      status.textContent =
+        "";
 
-      submitButton.hidden = true;
 
-      bookingSuccess.hidden = false;
+      submitButton.hidden =
+        true;
+
+
+      bookingSuccess.hidden =
+        false;
 
 
     } catch (err) {
