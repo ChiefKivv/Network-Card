@@ -173,7 +173,7 @@ document
       );
 
       loginStatus.textContent =
-        "Login failed. Check your email/password and Firebase Authentication setup.";
+        `${err.code || "Login error"}: ${err.message || "Check your email/password and Firebase Authentication setup."}`;
     }
 
   });
@@ -629,7 +629,7 @@ document
 
 
       status.textContent =
-        "Could not add mix. Check Authentication, Firestore, Storage, App Check, and security rules.";
+        `${err?.code || "ERROR"}: ${err?.message || String(err)}`;
 
 
     } finally {
@@ -836,7 +836,7 @@ async function loadMixes() {
                 );
 
                 alert(
-                  "Could not change Latest Mix. Check Firebase access and try again."
+                  `${err?.code || "ERROR"}: ${err?.message || "Could not change Latest Mix."}`
                 );
 
               }
@@ -924,7 +924,7 @@ async function loadMixes() {
                 );
 
                 alert(
-                  "Delete failed. Check Firebase access and try again."
+                  `${err?.code || "ERROR"}: ${err?.message || "Delete failed."}`
                 );
 
               }
@@ -945,11 +945,8 @@ async function loadMixes() {
     el.innerHTML = `
 
       <div class="empty">
-        Unable to load mixes.
-        Check admin login,
-        App Check,
-        Firestore,
-        and rules.
+        Unable to load mixes.<br><br>
+        ${esc(err?.code || "ERROR")}: ${esc(err?.message || String(err))}
       </div>
 
     `;
@@ -1194,7 +1191,7 @@ async function loadBookings() {
 
 
                 alert(
-                  "Could not update this booking. Check Firebase access and try again."
+                  `${err?.code || "ERROR"}: ${err?.message || "Could not update this booking."}`
                 );
 
               }
@@ -1215,11 +1212,8 @@ async function loadBookings() {
     el.innerHTML = `
 
       <div class="empty">
-        Unable to load bookings.
-        Check admin login,
-        App Check,
-        Firestore,
-        and rules.
+        Unable to load bookings.<br><br>
+        ${esc(err?.code || "ERROR")}: ${esc(err?.message || String(err))}
       </div>
 
     `;
