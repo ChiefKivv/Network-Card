@@ -69,10 +69,6 @@ const eventDate =
   form.querySelector('input[name="eventDate"]');
 
 
-/* =====================================================
-   EVENT DATE
-===================================================== */
-
 eventDate.min =
   new Date()
     .toISOString()
@@ -84,46 +80,38 @@ eventDate.min =
 ===================================================== */
 
 function escapeHTML(value = "") {
-
   const s = String(value);
 
   return s.replace(
     /[&<>"']/g,
-    c =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-      }[c])
+    c => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[c])
   );
-
 }
 
 
 function closeBookingModal() {
-
   modal.classList.remove("show");
 
   modal.setAttribute(
     "aria-hidden",
     "true"
   );
-
 }
 
 
 /* =====================================================
-   SOUNDCLOUD HELPERS
+   SOUNDCLOUD URL CHECK
 ===================================================== */
 
 function isSoundCloudUrl(value) {
-
   try {
-
-    const url =
-      new URL(value);
+    const url = new URL(value);
 
     const host =
       url.hostname.toLowerCase();
@@ -137,20 +125,14 @@ function isSoundCloudUrl(value) {
     );
 
   } catch {
-
     return false;
-
   }
-
 }
 
 
-/*
-  Ask SoundCloud for the correct embed.
-
-  SoundCloud's official oEmbed endpoint returns iframe
-  HTML for supported SoundCloud URLs.
-*/
+/* =====================================================
+   SOUNDCLOUD OEMBED
+===================================================== */
 
 async function getSoundCloudEmbed(url) {
 
@@ -165,7 +147,7 @@ async function getSoundCloudEmbed(url) {
     "https://soundcloud.com/oembed" +
     "?format=json" +
     "&maxheight=166" +
-    "&auto_play=true" +
+    "&auto_play=false" +
     "&show_comments=false" +
     "&url=" +
     encodeURIComponent(url);
@@ -176,11 +158,9 @@ async function getSoundCloudEmbed(url) {
 
 
   if (!response.ok) {
-
     throw new Error(
-      `SoundCloud embed request failed (${response.status}).`
+      `SoundCloud returned ${response.status}.`
     );
-
   }
 
 
@@ -188,20 +168,14 @@ async function getSoundCloudEmbed(url) {
     await response.json();
 
 
-  if (
-    !data ||
-    !data.html
-  ) {
-
+  if (!data?.html) {
     throw new Error(
-      "SoundCloud did not return an embed."
+      "SoundCloud did not return a playable embed."
     );
-
   }
 
 
   return data.html;
-
 }
 
 
@@ -212,11 +186,8 @@ async function getSoundCloudEmbed(url) {
 async function playSoundCloudMix(mix) {
 
   player.pause();
-
   player.removeAttribute("src");
-
-  player.style.display =
-    "none";
+  player.style.display = "none";
 
 
   let container =
@@ -228,9 +199,7 @@ async function playSoundCloudMix(mix) {
   if (!container) {
 
     container =
-      document.createElement(
-        "div"
-      );
+      document.createElement("div");
 
     container.id =
       "soundcloudPlayer";
@@ -244,16 +213,13 @@ async function playSoundCloudMix(mix) {
   }
 
 
-  container.hidden =
-    false;
+  container.hidden = false;
 
 
   container.innerHTML = `
-
     <div class="empty">
       Loading SoundCloud player…
     </div>
-
   `;
 
 
@@ -276,21 +242,14 @@ async function playSoundCloudMix(mix) {
 
 
     const iframe =
-      container.querySelector(
-        "iframe"
-      );
+      container.querySelector("iframe");
 
 
     if (iframe) {
 
-      iframe.width =
-        "100%";
-
-      iframe.height =
-        "166";
-
-      iframe.style.border =
-        "0";
+      iframe.width = "100%";
+      iframe.height = "166";
+      iframe.style.border = "0";
 
       iframe.setAttribute(
         "allow",
@@ -302,25 +261,23 @@ async function playSoundCloudMix(mix) {
         "no"
       );
 
+      iframe.setAttribute(
+        "title",
+        `SoundCloud player - ${mix.name}`
+      );
+
     }
 
 
   } catch (err) {
 
     console.error(
-      "SoundCloud player failed",
+      "SoundCloud embed failed",
       err
     );
 
 
-    /*
-      Do not display SoundCloud's broken white iframe.
-
-      Give the visitor a direct SoundCloud button instead.
-    */
-
     container.innerHTML = `
-
       <div class="latest-card">
 
         <strong>
@@ -328,7 +285,7 @@ async function playSoundCloudMix(mix) {
         </strong>
 
         <p class="muted">
-          This SoundCloud link cannot be embedded directly.
+          This mix could not be played directly on this page.
         </p>
 
         <a
@@ -341,11 +298,9 @@ async function playSoundCloudMix(mix) {
         </a>
 
       </div>
-
     `;
 
   }
-
 }
 
 
@@ -355,27 +310,16 @@ async function playSoundCloudMix(mix) {
 
 async function playMix(mix) {
 
-  /*
-    SOUNDCLOUD
-  */
-
   if (
     mix.sourceType === "soundcloud" &&
     mix.soundcloudUrl
   ) {
 
-    await playSoundCloudMix(
-      mix
-    );
+    await playSoundCloudMix(mix);
 
     return;
-
   }
 
-
-  /*
-    DIRECT UPLOAD
-  */
 
   const sc =
     document.querySelector(
@@ -384,29 +328,21 @@ async function playMix(mix) {
 
 
   if (sc) {
-
-    sc.hidden =
-      true;
-
-    sc.innerHTML =
-      "";
-
+    sc.hidden = true;
+    sc.innerHTML = "";
   }
 
 
-  player.style.display =
-    "";
+  player.style.display = "";
 
 
   if (!mix.url) {
-
     console.error(
-      "Upload mix has no playable URL",
+      "No playable URL for mix",
       mix
     );
 
     return;
-
   }
 
 
@@ -415,16 +351,12 @@ async function playMix(mix) {
 
 
   try {
-
     await player.play();
-
   } catch (err) {
-
     console.warn(
-      "Browser prevented autoplay",
+      "Autoplay prevented",
       err
     );
-
   }
 
 
@@ -432,7 +364,6 @@ async function playMix(mix) {
     behavior: "smooth",
     block: "center"
   });
-
 }
 
 
@@ -466,8 +397,7 @@ async function loadMixes() {
       );
 
 
-    const mixes =
-      [];
+    const mixes = [];
 
 
     for (
@@ -485,38 +415,23 @@ async function loadMixes() {
       };
 
 
-      /*
-        SOUNDCLOUD MIX
-
-        Keep the SoundCloud URL exactly as it is stored.
-        We will let SoundCloud's oEmbed service determine
-        the appropriate player.
-      */
+      /* SOUNDCLOUD */
 
       if (
         data.sourceType === "soundcloud" &&
         data.soundcloudUrl
       ) {
 
-        mixes.push(
-          mix
-        );
+        mixes.push(mix);
 
         continue;
-
       }
 
 
-      /*
-        DIRECT FIREBASE STORAGE UPLOAD
-      */
+      /* DIRECT UPLOAD */
 
-      if (
-        !data.storagePath
-      ) {
-
+      if (!data.storagePath) {
         continue;
-
       }
 
 
@@ -524,12 +439,10 @@ async function loadMixes() {
 
         mix.url =
           await getDownloadURL(
-
             ref(
               storage,
               data.storagePath
             )
-
           );
 
 
@@ -538,9 +451,7 @@ async function loadMixes() {
           "upload";
 
 
-        mixes.push(
-          mix
-        );
+        mixes.push(mix);
 
 
       } catch (err) {
@@ -556,10 +467,6 @@ async function loadMixes() {
     }
 
 
-    /* =================================================
-       FIND LATEST MIX
-    ================================================= */
-
     const latest =
       mixes.find(
         m => m.isLatest
@@ -567,15 +474,10 @@ async function loadMixes() {
       mixes[0];
 
 
-    /* =================================================
-       LATEST MIX CARD
-    ================================================= */
-
     latestEl.innerHTML =
       latest
 
         ? `
-
           <div class="latest-card">
 
             <span class="eyebrow">
@@ -583,37 +485,26 @@ async function loadMixes() {
             </span>
 
             <strong>
-              ${escapeHTML(
-                latest.name
-              )}
+              ${escapeHTML(latest.name)}
             </strong>
 
             <button
               class="play-latest"
-              data-mix-id="${escapeHTML(
-                latest.id
-              )}"
+              data-mix-id="${escapeHTML(latest.id)}"
               type="button"
             >
               ▶ PLAY
             </button>
 
           </div>
-
         `
 
         : `
-
           <div class="empty">
             No mixes have been published yet.
           </div>
-
         `;
 
-
-    /* =================================================
-       MORE MIXES
-    ================================================= */
 
     const otherMixes =
       mixes.filter(
@@ -627,58 +518,40 @@ async function loadMixes() {
       otherMixes.length
 
         ? otherMixes
-
             .map(
               m => `
-
                 <button
                   class="mix-row"
-                  data-mix-id="${escapeHTML(
-                    m.id
-                  )}"
+                  data-mix-id="${escapeHTML(m.id)}"
                   type="button"
                 >
 
                   <span>
-                    ${escapeHTML(
-                      m.name
-                    )}
+                    ${escapeHTML(m.name)}
                   </span>
 
-                  <b>
-                    ▶
-                  </b>
+                  <b>▶</b>
 
                 </button>
-
               `
             )
-
             .join("")
 
         : `
-
           <div class="empty">
             More mixes coming soon.
           </div>
-
         `;
 
 
-    /* =================================================
-       CONNECT PLAY BUTTONS
-    ================================================= */
-
     const byId =
       new Map(
-
         mixes.map(
           m => [
             m.id,
             m
           ]
         )
-
       );
 
 
@@ -700,11 +573,7 @@ async function loadMixes() {
 
 
               if (mix) {
-
-                await playMix(
-                  mix
-                );
-
+                await playMix(mix);
               }
 
             }
@@ -727,12 +596,10 @@ async function loadMixes() {
 
 
     listEl.innerHTML = `
-
       <div class="empty">
         Mix library is unavailable.
         Please try again shortly.
       </div>
-
     `;
 
   }
@@ -745,20 +612,13 @@ async function loadMixes() {
 ===================================================== */
 
 document
-  .querySelector(
-    "#bookingOpen"
-  )
+  .querySelector("#bookingOpen")
   .onclick =
     () => {
 
-      bookingSuccess.hidden =
-        true;
-
-      status.textContent =
-        "";
-
-      submitButton.hidden =
-        false;
+      bookingSuccess.hidden = true;
+      status.textContent = "";
+      submitButton.hidden = false;
 
       modal.classList.add(
         "show"
@@ -773,9 +633,7 @@ document
 
 
 document
-  .querySelector(
-    "#bookingClose"
-  )
+  .querySelector("#bookingClose")
   .onclick =
     closeBookingModal;
 
@@ -784,12 +642,8 @@ modal.addEventListener(
   "click",
   e => {
 
-    if (
-      e.target === modal
-    ) {
-
+    if (e.target === modal) {
       closeBookingModal();
-
     }
 
   }
@@ -802,9 +656,7 @@ document.addEventListener(
 
     if (
       e.key === "Escape" &&
-      modal.classList.contains(
-        "show"
-      )
+      modal.classList.contains("show")
     ) {
 
       closeBookingModal();
@@ -826,28 +678,18 @@ form.addEventListener(
     e.preventDefault();
 
 
-    if (
-      !form.reportValidity()
-    ) {
-
+    if (!form.reportValidity()) {
       return;
-
     }
 
 
     const fd =
-      new FormData(
-        form
-      );
+      new FormData(form);
 
-
-    /* Honeypot */
 
     if (
       (
-        fd.get(
-          "website"
-        ) || ""
+        fd.get("website") || ""
       ).trim()
     ) {
 
@@ -855,7 +697,6 @@ form.addEventListener(
         "Unable to submit right now. Please call/text 347-771-7483.";
 
       return;
-
     }
 
 
@@ -900,12 +741,8 @@ form.addEventListener(
       ).trim();
 
 
-    if (
-      !data.details
-    ) {
-
+    if (!data.details) {
       delete data.details;
-
     }
 
 
@@ -943,22 +780,14 @@ form.addEventListener(
       eventDate.min =
         new Date()
           .toISOString()
-          .slice(
-            0,
-            10
-          );
+          .slice(0, 10);
 
 
-      status.textContent =
-        "";
+      status.textContent = "";
 
+      submitButton.hidden = true;
 
-      submitButton.hidden =
-        true;
-
-
-      bookingSuccess.hidden =
-        false;
+      bookingSuccess.hidden = false;
 
 
     } catch (err) {
