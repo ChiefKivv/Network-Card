@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+
   <meta charset="UTF-8">
 
   <meta
@@ -14,382 +15,491 @@
     content="#0a0a0a"
   >
 
-  <!-- CHIEF KIVV BROWSER ICON -->
+
   <link
     rel="icon"
     type="image/png"
     href="./assets/favicon.png"
   >
 
+
   <link
     rel="apple-touch-icon"
     href="./assets/favicon.png"
   >
 
-  <title>Chief Kivv | DJ • Events • Entertainment</title>
+
+  <title>
+    Chief Kivv | DJ • Events • Entertainment
+  </title>
+
 
   <link
     rel="stylesheet"
     href="styles.css"
   >
+
 </head>
+
 
 <body>
 
-  <main class="site">
 
-    <!-- ========================= -->
-    <!-- CHIEF KIVV BRANDING       -->
-    <!-- ========================= -->
-
-    <header class="profile">
-
-      <img
-        src="./assets/ChiefKivvWhite.png"
-        alt="Chief Kivv"
-        style="
-          display:block;
-          width:min(90%,420px);
-          height:auto;
-          max-height:none;
-          object-fit:contain;
-          border-radius:0;
-          margin:0 auto 14px auto;
-        "
-        onerror="this.style.display='none'"
-      >
-
-      <p>DJ • Events • Entertainment</p>
-
-    </header>
+<main class="site">
 
 
-    <!-- ========================= -->
-    <!-- CONTACT ACTIONS           -->
-    <!-- ========================= -->
+  <!-- =================================================
+       BRAND
+  ================================================== -->
 
-    <nav
-      class="actions"
-      aria-label="Contact actions"
+  <header class="profile">
+
+    <img
+      src="./assets/ChiefKivvWhite.png"
+      alt="Chief Kivv"
+      style="
+        display:block;
+        width:min(90%,420px);
+        height:auto;
+        object-fit:contain;
+        border-radius:0;
+        margin:0 auto 14px auto;
+      "
+      onerror="this.style.display='none'"
     >
 
-      <a
-        class="action primary"
-        href="https://www.instagram.com/chief_kivv/"
-        target="_blank"
-        rel="noopener"
-      >
-        📸 FOLLOW ME ON INSTAGRAM
-      </a>
 
-      <a
-        class="action"
-        href="tel:+13477717483"
-      >
-        📲 CALL / TEXT
-      </a>
+    <p>
+      DJ • Events • Entertainment
+    </p>
 
-      <button
-        class="action"
-        id="bookingOpen"
-        type="button"
-      >
-        📲 BOOK ME
-      </button>
-
-      <a
-        class="action"
-        href="contact/chief-kivv.vcf"
-        download
-      >
-        📇 SAVE MY CONTACT
-      </a>
-
-    </nav>
+  </header>
 
 
-    <!-- ========================= -->
-    <!-- MUSIC                     -->
-    <!-- ========================= -->
 
-    <section class="music">
+  <!-- =================================================
+       ACTIONS
+  ================================================== -->
 
-      <h2>▶ LISTEN TO MY MIXES</h2>
-
-      <div id="latest"></div>
-
-      <h3>More Mixes</h3>
-
-      <div id="mixList">
-        <div class="empty">
-          Loading mixes…
-        </div>
-      </div>
-
-      <!-- Direct upload audio player -->
-      <audio
-        id="player"
-        controls
-        preload="metadata"
-        style="display:none;"
-      ></audio>
-
-      <!--
-        SoundCloud player is injected dynamically
-        by app.js when a SoundCloud mix is selected.
-      -->
-
-    </section>
-
-
-    <!-- ========================= -->
-    <!-- FOOTER                    -->
-    <!-- ========================= -->
-
-    <footer>
-      © 2026 Chief Kivv • Double Cup Bookings
-    </footer>
-
-  </main>
-
-
-  <!-- ================================== -->
-  <!-- BOOKING MODAL                      -->
-  <!-- ================================== -->
-
-  <div
-    class="modal"
-    id="bookingModal"
-    aria-hidden="true"
+  <nav
+    class="actions"
+    aria-label="Contact actions"
   >
 
-    <div class="modal-card">
 
-      <button
-        class="close"
-        id="bookingClose"
-        type="button"
-        aria-label="Close"
-      >
-        ×
-      </button>
-
-      <h2>BOOK CHIEF KIVV</h2>
-
-      <p class="muted">
-        Submit your event details and booking request.
-      </p>
+    <a
+      class="action primary"
+      href="https://www.instagram.com/chief_kivv/"
+      target="_blank"
+      rel="noopener"
+    >
+      📸 FOLLOW ME ON INSTAGRAM
+    </a>
 
 
-      <!-- ========================= -->
-      <!-- BOOKING FORM              -->
-      <!-- ========================= -->
-
-      <form id="bookingForm">
-
-        <label>
-          Event Date*
-
-          <input
-            name="eventDate"
-            type="date"
-            required
-          >
-        </label>
+    <a
+      class="action"
+      href="tel:+13477717483"
+    >
+      📲 CALL / TEXT
+    </a>
 
 
-        <label>
-          Type of Event*
-
-          <input
-            name="eventType"
-            maxlength="100"
-            placeholder="Birthday, wedding, corporate, boat ride..."
-            required
-          >
-        </label>
+    <button
+      class="action"
+      id="bookingOpen"
+      type="button"
+    >
+      📲 BOOK ME
+    </button>
 
 
-        <label>
-          Requested Time*
-
-          <input
-            name="requestedTime"
-            type="time"
-            required
-          >
-        </label>
+    <a
+      class="action"
+      href="contact/chief-kivv.vcf"
+      download
+    >
+      📇 SAVE MY CONTACT
+    </a>
 
 
-        <label>
-          Genre Preference
-
-          <select name="genre">
-
-            <option value="">
-              Open Format
-            </option>
-
-            <option>R&amp;B</option>
-            <option>Hip-Hop</option>
-            <option>Reggae</option>
-            <option>Dancehall</option>
-            <option>Soca</option>
-            <option>Afrobeats</option>
-            <option>Kompa</option>
-            <option>Other</option>
-
-          </select>
-        </label>
+  </nav>
 
 
-        <label>
-          Your Name*
 
-          <input
-            name="requesterName"
-            maxlength="100"
-            autocomplete="name"
-            required
-          >
-        </label>
+  <!-- =================================================
+       MIXES
+  ================================================== -->
+
+  <section class="music">
 
 
-        <label>
-          Email*
-
-          <input
-            name="email"
-            type="email"
-            maxlength="254"
-            autocomplete="email"
-            required
-          >
-        </label>
+    <h2>
+      ▶ LISTEN TO MY MIXES
+    </h2>
 
 
-        <label>
-          Phone*
+    <!-- Latest mix -->
 
-          <input
-            name="phone"
-            type="tel"
-            maxlength="40"
-            autocomplete="tel"
-            required
-          >
-        </label>
+    <div id="latest"></div>
 
 
-        <label>
-          Preferred Deposit Method*
 
-          <select
-            name="depositMethod"
-            required
-          >
+    <!-- SoundCloud player appears here -->
 
-            <option value="">
-              Select one
-            </option>
-
-            <option>Zelle</option>
-            <option>Cash App</option>
-            <option>Venmo</option>
-            <option>PayPal</option>
-            <option>Cash</option>
-            <option>Other</option>
-
-          </select>
-        </label>
+    <div
+      id="soundcloudHost"
+      hidden
+      style="
+        width:100%;
+        margin-top:16px;
+        margin-bottom:16px;
+      "
+    ></div>
 
 
-        <label>
-          Additional Details
 
-          <textarea
-            name="details"
-            rows="4"
-            maxlength="2000"
-            placeholder="Venue, guest count, special requests, etc."
-          ></textarea>
-        </label>
+    <!-- Direct-upload player -->
 
-
-        <!-- Spam protection field -->
-        <div
-          class="hp-field"
-          aria-hidden="true"
-        >
-          <label>
-            Website
-
-            <input
-              name="website"
-              tabindex="-1"
-              autocomplete="off"
-            >
-          </label>
-        </div>
+    <audio
+      id="player"
+      controls
+      preload="metadata"
+      style="
+        display:none;
+        width:100%;
+        margin-top:16px;
+        margin-bottom:16px;
+      "
+    ></audio>
 
 
-        <button
-          class="submit"
-          type="submit"
-        >
-          SUBMIT BOOKING REQUEST
-        </button>
+
+    <h3>
+      More Mixes
+    </h3>
 
 
-        <p
-          id="bookingStatus"
-          class="status"
-          aria-live="polite"
-        ></p>
+    <div id="mixList">
 
-
-        <!-- SUCCESS MESSAGE -->
-
-        <div
-          id="bookingSuccess"
-          class="booking-success"
-          hidden
-        >
-
-          <strong>
-            BOOKING REQUEST SENT ✓
-          </strong>
-
-          <p>
-            Thanks! We’ll be in touch about your event.
-          </p>
-
-          <a
-            class="action primary"
-            href="https://www.instagram.com/chief_kivv/"
-            target="_blank"
-            rel="noopener"
-          >
-            📸 FOLLOW @CHIEF_KIVV
-          </a>
-
-        </div>
-
-      </form>
+      <div class="empty">
+        Loading mixes…
+      </div>
 
     </div>
+
+
+  </section>
+
+
+
+  <!-- =================================================
+       FOOTER
+  ================================================== -->
+
+  <footer>
+    © 2026 Chief Kivv • Double Cup Bookings
+  </footer>
+
+
+</main>
+
+
+
+<!-- =====================================================
+     BOOKING MODAL
+===================================================== -->
+
+<div
+  class="modal"
+  id="bookingModal"
+  aria-hidden="true"
+>
+
+
+  <div class="modal-card">
+
+
+    <button
+      class="close"
+      id="bookingClose"
+      type="button"
+      aria-label="Close"
+    >
+      ×
+    </button>
+
+
+    <h2>
+      BOOK CHIEF KIVV
+    </h2>
+
+
+    <p class="muted">
+      Submit your event details and booking request.
+    </p>
+
+
+
+    <form id="bookingForm">
+
+
+      <label>
+
+        Event Date*
+
+        <input
+          name="eventDate"
+          type="date"
+          required
+        >
+
+      </label>
+
+
+
+      <label>
+
+        Type of Event*
+
+        <input
+          name="eventType"
+          maxlength="100"
+          placeholder="Birthday, wedding, corporate, boat ride..."
+          required
+        >
+
+      </label>
+
+
+
+      <label>
+
+        Requested Time*
+
+        <input
+          name="requestedTime"
+          type="time"
+          required
+        >
+
+      </label>
+
+
+
+      <label>
+
+        Genre Preference
+
+        <select name="genre">
+
+          <option value="">
+            Open Format
+          </option>
+
+          <option>R&amp;B</option>
+          <option>Hip-Hop</option>
+          <option>Reggae</option>
+          <option>Dancehall</option>
+          <option>Soca</option>
+          <option>Afrobeats</option>
+          <option>Kompa</option>
+          <option>Other</option>
+
+        </select>
+
+      </label>
+
+
+
+      <label>
+
+        Your Name*
+
+        <input
+          name="requesterName"
+          maxlength="100"
+          autocomplete="name"
+          required
+        >
+
+      </label>
+
+
+
+      <label>
+
+        Email*
+
+        <input
+          name="email"
+          type="email"
+          maxlength="254"
+          autocomplete="email"
+          required
+        >
+
+      </label>
+
+
+
+      <label>
+
+        Phone*
+
+        <input
+          name="phone"
+          type="tel"
+          maxlength="40"
+          autocomplete="tel"
+          required
+        >
+
+      </label>
+
+
+
+      <label>
+
+        Preferred Deposit Method*
+
+        <select
+          name="depositMethod"
+          required
+        >
+
+          <option value="">
+            Select one
+          </option>
+
+          <option>Zelle</option>
+          <option>Cash App</option>
+          <option>Venmo</option>
+          <option>PayPal</option>
+          <option>Cash</option>
+          <option>Other</option>
+
+        </select>
+
+      </label>
+
+
+
+      <label>
+
+        Additional Details
+
+        <textarea
+          name="details"
+          rows="4"
+          maxlength="2000"
+          placeholder="Venue, guest count, special requests, etc."
+        ></textarea>
+
+      </label>
+
+
+
+      <!-- Spam trap -->
+
+      <div
+        class="hp-field"
+        aria-hidden="true"
+      >
+
+        <label>
+
+          Website
+
+          <input
+            name="website"
+            tabindex="-1"
+            autocomplete="off"
+          >
+
+        </label>
+
+      </div>
+
+
+
+      <button
+        class="submit"
+        type="submit"
+      >
+        SUBMIT BOOKING REQUEST
+      </button>
+
+
+
+      <p
+        id="bookingStatus"
+        class="status"
+        aria-live="polite"
+      ></p>
+
+
+
+      <div
+        id="bookingSuccess"
+        class="booking-success"
+        hidden
+      >
+
+
+        <strong>
+          BOOKING REQUEST SENT ✓
+        </strong>
+
+
+        <p>
+          Thanks! We’ll be in touch about your event.
+        </p>
+
+
+        <a
+          class="action primary"
+          href="https://www.instagram.com/chief_kivv/"
+          target="_blank"
+          rel="noopener"
+        >
+          📸 FOLLOW @CHIEF_KIVV
+        </a>
+
+
+      </div>
+
+
+    </form>
+
 
   </div>
 
 
-  <!-- ========================= -->
-  <!-- WEBSITE JAVASCRIPT        -->
-  <!-- ========================= -->
+</div>
 
-  <script
-    type="module"
-    src="./app.js?v=6"
-  ></script>
+
+
+<!-- =====================================================
+     SOUNDCLOUD WIDGET API
+===================================================== -->
+
+<script
+  src="https://w.soundcloud.com/player/api.js"
+></script>
+
+
+
+<!-- =====================================================
+     WEBSITE JAVASCRIPT
+===================================================== -->
+
+<script
+  type="module"
+  src="./app.js?v=8"
+></script>
+
 
 </body>
+
 </html>
