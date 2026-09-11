@@ -3,85 +3,188 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <link rel="icon" type="image/png" href="./assets/favicon.png">
-  <link rel="apple-touch-icon" href="./assets/favicon.png">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+
+  <link
+    rel="icon"
+    type="image/png"
+    href="./assets/favicon.png"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="./assets/favicon.png"
+  >
 
   <title>Chief Kivv Admin</title>
-  <link rel="stylesheet" href="styles.css">
+
+  <link
+    rel="stylesheet"
+    href="styles.css"
+  >
 </head>
+
 
 <body>
 
 <main class="admin site">
 
+
+  <!-- =====================================================
+       ADMIN HEADER
+  ====================================================== -->
+
   <header class="admin-head">
+
     <div>
-      <h1>CHIEF KIVV</h1>
-      <p>Admin Dashboard</p>
+
+      <h1>
+        CHIEF KIVV
+      </h1>
+
+      <p>
+        Admin Dashboard
+      </p>
+
     </div>
 
-    <button id="logout" class="small-btn" hidden>
+
+    <button
+      id="logout"
+      class="small-btn"
+      type="button"
+      hidden
+    >
       LOG OUT
     </button>
+
   </header>
 
-  <section id="loginPanel" class="panel">
-    <h2>ADMIN LOGIN</h2>
+
+
+  <!-- =====================================================
+       ADMIN LOGIN
+  ====================================================== -->
+
+  <section
+    id="loginPanel"
+    class="panel"
+  >
+
+    <h2>
+      ADMIN LOGIN
+    </h2>
+
 
     <form id="loginForm">
 
+
       <label>
+
         Email
+
         <input
           id="loginEmail"
           type="email"
           value="doublecupbookings@gmail.com"
+          autocomplete="username"
           required
         >
+
       </label>
 
+
       <label>
+
         Password
+
         <input
           id="loginPassword"
           type="password"
+          autocomplete="current-password"
           required
         >
+
       </label>
 
-      <button class="submit" type="submit">
+
+      <button
+        class="submit"
+        type="submit"
+      >
         SIGN IN
       </button>
 
-      <p id="loginStatus" class="status"></p>
+
+      <p
+        id="loginStatus"
+        class="status"
+      ></p>
+
 
     </form>
+
   </section>
 
-  <div id="dashboard" hidden>
+
+
+  <!-- =====================================================
+       ADMIN DASHBOARD
+  ====================================================== -->
+
+  <div
+    id="dashboard"
+    hidden
+  >
+
+
+    <!-- =================================================
+         UPLOAD / ADD MIX
+    ================================================== -->
 
     <section class="panel">
 
-      <h2>UPLOAD A MIX</h2>
+      <h2>
+        UPLOAD A MIX
+      </h2>
+
 
       <form id="mixForm">
 
+
+        <!-- MIX NAME -->
+
         <label>
+
           Mix Name*
+
           <input
             id="mixName"
+            type="text"
             maxlength="150"
             placeholder="Summer Soca Session"
             required
           >
+
         </label>
 
+
+
+        <!-- MIX SOURCE -->
+
         <label>
+
           Mix Source*
 
-          <select id="mixSource">
+          <select
+            id="mixSource"
+            required
+          >
+
             <option value="upload">
               Upload MP3 / AIF / AIFF
             </option>
@@ -89,11 +192,17 @@
             <option value="soundcloud">
               SoundCloud Link
             </option>
+
           </select>
 
         </label>
 
+
+
+        <!-- DIRECT AUDIO UPLOAD -->
+
         <label id="mixFileLabel">
+
           Audio File*
 
           <input
@@ -101,41 +210,96 @@
             type="file"
             accept="audio/mpeg,audio/aiff,audio/x-aiff,.mp3,.aif,.aiff"
           >
+
         </label>
 
-        <label id="soundcloudUrlLabel" hidden>
-          SoundCloud Track URL*
+
+
+        <!-- SOUNDCLOUD -->
+
+        <label
+          id="soundcloudUrlLabel"
+          hidden
+        >
+
+          SoundCloud Link*
 
           <input
             id="soundcloudUrl"
             type="url"
             maxlength="1000"
-            placeholder="https://soundcloud.com/artist/mix-name"
+            placeholder="Paste any SoundCloud link"
+            inputmode="url"
+            autocomplete="off"
           >
+
         </label>
 
-        <p class="muted">
-          Direct uploads: MP3, AIF or AIFF up to 2 GB. Large files use resumable upload.
+
+
+        <!-- UPLOAD INFORMATION -->
+
+        <p
+          id="uploadHelp"
+          class="muted"
+        >
+          Direct uploads: MP3, AIF or AIFF up to 2 GB.
+          Large files use resumable upload.
         </p>
 
+
+
+        <!-- LATEST MIX -->
+
         <label class="check">
-          <input id="isLatest" type="checkbox">
+
+          <input
+            id="isLatest"
+            type="checkbox"
+          >
+
           Set as Latest Mix
+
         </label>
 
-        <button class="submit" type="submit">
+
+
+        <!-- SUBMIT -->
+
+        <button
+          class="submit"
+          type="submit"
+        >
           ADD MIX
         </button>
 
-        <p id="mixStatus" class="status"></p>
+
+
+        <!-- MIX STATUS / ERRORS -->
+
+        <p
+          id="mixStatus"
+          class="status"
+          aria-live="polite"
+        ></p>
+
 
       </form>
 
     </section>
 
+
+
+    <!-- =================================================
+         MIX LIBRARY
+    ================================================== -->
+
     <section class="panel">
 
-      <h2>MIX LIBRARY</h2>
+      <h2>
+        MIX LIBRARY
+      </h2>
+
 
       <div id="adminMixes">
         Loading…
@@ -143,9 +307,18 @@
 
     </section>
 
+
+
+    <!-- =================================================
+         BOOKING REQUESTS
+    ================================================== -->
+
     <section class="panel">
 
-      <h2>BOOKING REQUESTS</h2>
+      <h2>
+        BOOKING REQUESTS
+      </h2>
+
 
       <div id="bookings">
         Loading…
@@ -153,11 +326,26 @@
 
     </section>
 
+
   </div>
 
 </main>
 
-<script type="module" src="admin.js"></script>
+
+
+<!-- =====================================================
+     ADMIN JAVASCRIPT
+
+     ?v=4 forces browsers to retrieve the newest version
+     instead of using an older cached admin.js.
+===================================================== -->
+
+<script
+  type="module"
+  src="./admin.js?v=4"
+></script>
+
 
 </body>
+
 </html>
