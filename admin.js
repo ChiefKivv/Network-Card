@@ -122,6 +122,7 @@ function formatDate(value) {
 ===================================================== */
 
 onAuthStateChanged(auth, async user => {
+
   const allowed = !!(
     user &&
     user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
@@ -131,15 +132,20 @@ onAuthStateChanged(auth, async user => {
   dashboard.hidden = !allowed;
   logoutButton.hidden = !allowed;
 
+
   if (user && !allowed) {
+
     loginStatus.textContent =
       "This account is not authorized for the admin dashboard.";
 
     await signOut(auth);
+
     return;
   }
 
+
   if (allowed) {
+
     loginStatus.textContent = "";
 
     await Promise.all([
@@ -147,6 +153,7 @@ onAuthStateChanged(auth, async user => {
       loadBookings()
     ]);
   }
+
 });
 
 
@@ -157,22 +164,30 @@ onAuthStateChanged(auth, async user => {
 document
   .querySelector("#loginForm")
   .addEventListener("submit", async e => {
+
     e.preventDefault();
 
     loginStatus.textContent = "Signing in…";
 
     try {
+
       await signInWithEmailAndPassword(
         auth,
         loginEmail.value.trim(),
         loginPassword.value
       );
+
     } catch (err) {
-      console.error("Admin login failed", err);
+
+      console.error(
+        "Admin login failed",
+        err
+      );
 
       loginStatus.textContent =
         `${err?.code || "LOGIN ERROR"}: ${err?.message || "Login failed."}`;
     }
+
   });
 
 
@@ -180,9 +195,12 @@ document
    LOGOUT
 ===================================================== */
 
-logoutButton.addEventListener("click", async () => {
-  await signOut(auth);
-});
+logoutButton.addEventListener(
+  "click",
+  async () => {
+    await signOut(auth);
+  }
+);
 
 
 /* =====================================================
@@ -190,14 +208,22 @@ logoutButton.addEventListener("click", async () => {
 ===================================================== */
 
 function syncMixSourceFields() {
+
   const useSoundCloud =
     mixSource.value === "soundcloud";
 
-  mixFileLabel.hidden = useSoundCloud;
-  soundcloudUrlLabel.hidden = !useSoundCloud;
+  mixFileLabel.hidden =
+    useSoundCloud;
 
-  mixFile.required = !useSoundCloud;
-  soundcloudUrl.required = useSoundCloud;
+  soundcloudUrlLabel.hidden =
+    !useSoundCloud;
+
+  mixFile.required =
+    !useSoundCloud;
+
+  soundcloudUrl.required =
+    useSoundCloud;
+
 
   if (useSoundCloud) {
     mixFile.value = "";
@@ -220,17 +246,28 @@ syncMixSourceFields();
 ===================================================== */
 
 function isValidSoundCloudUrl(value) {
+
   try {
+
     const url = new URL(value);
 
+    if (url.protocol !== "https:") {
+      return false;
+    }
+
+    const host =
+      url.hostname.toLowerCase();
+
     return (
-      url.protocol === "https:" &&
-      (
-        url.hostname === "soundcloud.com" ||
-        url.hostname.endsWith(".soundcloud.com")
-      )
+      host === "soundcloud.com" ||
+      host === "www.soundcloud.com" ||
+      host === "m.soundcloud.com" ||
+      host === "on.soundcloud.com" ||
+      host.endsWith(".soundcloud.com")
     );
+
   } catch {
+
     return false;
   }
 }
@@ -245,53 +282,63 @@ function uploadLargeAudio(
   file,
   statusEl
 ) {
-  return new Promise((resolve, reject) => {
-    const contentType =
-      file.type ||
-      (
-        file.name
-          .toLowerCase()
-          .endsWith(".mp3")
-          ? "audio/mpeg"
-          : "audio/aiff"
-      );
 
-    const task =
-      uploadBytesResumable(
-        storageRef,
-        file,
-        {
-          contentType
+  return new Promise(
+    (resolve, reject) => {
+
+      const contentType =
+        file.type ||
+        (
+          file.name
+            .toLowerCase()
+            .endsWith(".mp3")
+            ? "audio/mpeg"
+            : "audio/aiff"
+        );
+
+
+      const task =
+        uploadBytesResumable(
+          storageRef,
+          file,
+          {
+            contentType
+          }
+        );
+
+
+      task.on(
+
+        "state_changed",
+
+        snapshot => {
+
+          const pct =
+            snapshot.totalBytes
+              ? Math.round(
+                  (
+                    snapshot.bytesTransferred /
+                    snapshot.totalBytes
+                  ) * 100
+                )
+              : 0;
+
+          statusEl.textContent =
+            `Uploading… ${pct}%`;
+        },
+
+        error => {
+          reject(error);
+        },
+
+        () => {
+          resolve(task.snapshot);
         }
+
       );
 
-    task.on(
-      "state_changed",
-
-      snapshot => {
-        const pct =
-          snapshot.totalBytes
-            ? Math.round(
-                (
-                  snapshot.bytesTransferred /
-                  snapshot.totalBytes
-                ) * 100
-              )
-            : 0;
-
-        statusEl.textContent =
-          `Uploading… ${pct}%`;
-      },
-
-      error => {
-        reject(error);
-      },
-
-      () => {
-        resolve(task.snapshot);
-      }
-    );
-  });
+    }
+  );
 }
 
 
@@ -299,252 +346,328 @@ function uploadLargeAudio(
    ADD MIX
 ===================================================== */
 
-mixForm.addEventListener("submit", async e => {
-  e.preventDefault();
+mixForm.addEventListener(
+  "submit",
+  async e => {
 
-  const submit =
-    e.target.querySelector(
-      'button[type="submit"]'
-    );
-
-  const name =
-    document
-      .querySelector("#mixName")
-      .value
-      .trim();
-
-  const latest =
-    document
-      .querySelector("#isLatest")
-      .checked;
-
-  const sourceType =
-    mixSource.value;
-
-  if (
-    !name ||
-    name.length > 150
-  ) {
-    mixStatus.textContent =
-      "Mix name must be 1–150 characters.";
-
-    return;
-  }
-
-  mixStatus.textContent =
-    sourceType === "upload"
-      ? "Preparing upload…"
-      : "Saving SoundCloud mix…";
-
-  submit.disabled = true;
-
-  let storageRef = null;
-
-  try {
-    let mixData;
+    e.preventDefault();
 
 
-    /* =================================================
-       DIRECT FILE UPLOAD
-    ================================================= */
-
-    if (sourceType === "upload") {
-      const file =
-        mixFile.files[0];
-
-      const lower =
-        file?.name?.toLowerCase() || "";
-
-      const allowedExt =
-        lower.endsWith(".mp3") ||
-        lower.endsWith(".aif") ||
-        lower.endsWith(".aiff");
-
-      const allowedType = [
-        "audio/mpeg",
-        "audio/aiff",
-        "audio/x-aiff",
-        "audio/x-aif"
-      ].includes(
-        file?.type || ""
+    const submit =
+      e.target.querySelector(
+        'button[type="submit"]'
       );
 
-      if (
-        !file ||
-        (
-          !allowedExt &&
-          !allowedType
-        )
-      ) {
-        mixStatus.textContent =
-          "Please select an MP3, AIF, or AIFF file.";
+    const name =
+      document
+        .querySelector("#mixName")
+        .value
+        .trim();
 
-        return;
-      }
+    const latest =
+      document
+        .querySelector("#isLatest")
+        .checked;
 
-      if (
-        file.size <= 0 ||
-        file.size >
-          2 *
-          1024 *
-          1024 *
-          1024
-      ) {
-        mixStatus.textContent =
-          "Audio file must be larger than 0 bytes and no more than 2 GB.";
-
-        return;
-      }
-
-      const safe =
-        file.name.replace(
-          /[^a-z0-9._-]/gi,
-          "-"
-        );
-
-      const path =
-        `mixes/${crypto.randomUUID()}-${safe}`;
-
-      storageRef =
-        ref(
-          storage,
-          path
-        );
-
-      await uploadLargeAudio(
-        storageRef,
-        file,
-        mixStatus
-      );
-
-      mixData = {
-        name,
-        sourceType: "upload",
-        storagePath: path,
-        isLatest: latest,
-        createdAt: new Date().toISOString()
-      };
-    }
+    const sourceType =
+      mixSource.value;
 
 
-    /* =================================================
-       SOUNDCLOUD
-    ================================================= */
+    if (
+      !name ||
+      name.length > 150
+    ) {
 
-    else if (sourceType === "soundcloud") {
-      const url =
-        soundcloudUrl.value.trim();
+      mixStatus.textContent =
+        "Mix name must be 1–150 characters.";
 
-      if (!isValidSoundCloudUrl(url)) {
-        mixStatus.textContent =
-          "Enter a valid https://soundcloud.com/... track URL.";
-
-        return;
-      }
-
-      mixData = {
-        name,
-        sourceType: "soundcloud",
-        soundcloudUrl: url,
-        isLatest: latest,
-        createdAt: new Date().toISOString()
-      };
-    }
-
-
-    /* =================================================
-       UNKNOWN SOURCE
-    ================================================= */
-
-    else {
-      throw new Error(
-        `Unknown mix source: ${sourceType}`
-      );
-    }
-
-
-    /* =================================================
-       SAVE TO FIRESTORE
-    ================================================= */
-
-    const newDoc =
-      await addDoc(
-        collection(
-          db,
-          "mixes"
-        ),
-        mixData
-      );
-
-
-    /* =================================================
-       SET LATEST MIX
-    ================================================= */
-
-    if (latest) {
-      const all =
-        await getDocs(
-          collection(
-            db,
-            "mixes"
-          )
-        );
-
-      await Promise.all(
-        all.docs
-          .filter(
-            d =>
-              d.id !== newDoc.id &&
-              d.data().isLatest === true
-          )
-          .map(
-            d =>
-              updateDoc(
-                d.ref,
-                {
-                  isLatest: false
-                }
-              )
-          )
-      );
+      return;
     }
 
 
     mixStatus.textContent =
       sourceType === "upload"
-        ? "Mix uploaded successfully."
-        : "SoundCloud mix added successfully.";
+        ? "Preparing upload…"
+        : "Saving SoundCloud mix…";
 
-    e.target.reset();
 
-    syncMixSourceFields();
+    submit.disabled = true;
 
-    await loadMixes();
-  } catch (err) {
-    console.error(
-      "Mix add failed:",
-      err
-    );
+    let storageRef = null;
 
-    if (storageRef) {
-      try {
-        await deleteObject(
-          storageRef
+
+    try {
+
+      let mixData;
+
+
+      /* =================================================
+         DIRECT FILE UPLOAD
+      ================================================= */
+
+      if (sourceType === "upload") {
+
+        const file =
+          mixFile.files[0];
+
+
+        const lower =
+          file?.name?.toLowerCase() || "";
+
+
+        const allowedExt =
+          lower.endsWith(".mp3") ||
+          lower.endsWith(".aif") ||
+          lower.endsWith(".aiff");
+
+
+        const allowedType = [
+          "audio/mpeg",
+          "audio/aiff",
+          "audio/x-aiff",
+          "audio/x-aif"
+        ].includes(
+          file?.type || ""
         );
-      } catch (deleteErr) {
-        console.warn(
-          "Cleanup failed:",
-          deleteErr
+
+
+        if (
+          !file ||
+          (
+            !allowedExt &&
+            !allowedType
+          )
+        ) {
+
+          mixStatus.textContent =
+            "Please select an MP3, AIF, or AIFF file.";
+
+          return;
+        }
+
+
+        if (
+          file.size <= 0 ||
+          file.size >
+            2 *
+            1024 *
+            1024 *
+            1024
+        ) {
+
+          mixStatus.textContent =
+            "Audio file must be larger than 0 bytes and no more than 2 GB.";
+
+          return;
+        }
+
+
+        const safe =
+          file.name.replace(
+            /[^a-z0-9._-]/gi,
+            "-"
+          );
+
+
+        const path =
+          `mixes/${crypto.randomUUID()}-${safe}`;
+
+
+        storageRef =
+          ref(
+            storage,
+            path
+          );
+
+
+        await uploadLargeAudio(
+          storageRef,
+          file,
+          mixStatus
         );
+
+
+        mixData = {
+
+          name,
+
+          sourceType:
+            "upload",
+
+          storagePath:
+            path,
+
+          isLatest:
+            latest,
+
+          createdAt:
+            new Date().toISOString()
+
+        };
+
       }
+
+
+      /* =================================================
+         SOUNDCLOUD
+      ================================================= */
+
+      else if (sourceType === "soundcloud") {
+
+        const url =
+          soundcloudUrl.value.trim();
+
+
+        if (!isValidSoundCloudUrl(url)) {
+
+          mixStatus.textContent =
+            "Enter a valid SoundCloud link.";
+
+          return;
+        }
+
+
+        mixData = {
+
+          name,
+
+          sourceType:
+            "soundcloud",
+
+          soundcloudUrl:
+            url,
+
+          isLatest:
+            latest,
+
+          createdAt:
+            new Date().toISOString()
+
+        };
+
+      }
+
+
+      /* =================================================
+         UNKNOWN SOURCE
+      ================================================= */
+
+      else {
+
+        throw new Error(
+          `Unknown mix source: ${sourceType}`
+        );
+
+      }
+
+
+      /* =================================================
+         SAVE MIX TO FIRESTORE
+      ================================================= */
+
+      const newDoc =
+        await addDoc(
+          collection(
+            db,
+            "mixes"
+          ),
+          mixData
+        );
+
+
+      /* =================================================
+         SET LATEST MIX
+      ================================================= */
+
+      if (latest) {
+
+        const all =
+          await getDocs(
+            collection(
+              db,
+              "mixes"
+            )
+          );
+
+
+        await Promise.all(
+
+          all.docs
+
+            .filter(
+              d =>
+                d.id !== newDoc.id &&
+                d.data().isLatest === true
+            )
+
+            .map(
+              d =>
+                updateDoc(
+                  d.ref,
+                  {
+                    isLatest: false
+                  }
+                )
+            )
+
+        );
+
+      }
+
+
+      mixStatus.textContent =
+        sourceType === "upload"
+          ? "Mix uploaded successfully."
+          : "SoundCloud mix added successfully.";
+
+
+      e.target.reset();
+
+      syncMixSourceFields();
+
+      await loadMixes();
+
+
+    } catch (err) {
+
+      console.error(
+        "Mix add failed:",
+        err
+      );
+
+
+      if (storageRef) {
+
+        try {
+
+          await deleteObject(
+            storageRef
+          );
+
+        } catch (deleteErr) {
+
+          console.warn(
+            "Cleanup failed:",
+            deleteErr
+          );
+
+        }
+
+      }
+
+
+      mixStatus.textContent =
+        `${err?.code || "ERROR"}: ${err?.message || String(err)}`;
+
+
+    } finally {
+
+      submit.disabled = false;
+
     }
 
-    mixStatus.textContent =
-      `${err?.code || "ERROR"}: ${err?.message || String(err)}`;
-  } finally {
-    submit.disabled = false;
   }
-});
+);
 
 
 /* =====================================================
@@ -552,30 +675,41 @@ mixForm.addEventListener("submit", async e => {
 ===================================================== */
 
 async function loadMixes() {
+
   const el =
     document.querySelector(
       "#adminMixes"
     );
 
+
   el.innerHTML =
     "Loading…";
 
+
   try {
+
     const snap =
       await getDocs(
+
         query(
+
           collection(
             db,
             "mixes"
           ),
+
           orderBy(
             "createdAt",
             "desc"
           )
+
         )
+
       );
 
+
     if (snap.empty) {
+
       el.innerHTML = `
         <div class="empty">
           No mixes yet.
@@ -585,18 +719,24 @@ async function loadMixes() {
       return;
     }
 
+
     el.innerHTML =
       snap.docs
+
         .map(d => {
+
           const x =
             d.data();
+
 
           const source =
             x.sourceType === "soundcloud"
               ? "SOUNDCLOUD"
               : "UPLOAD";
 
+
           return `
+
             <div class="admin-row">
 
               <div>
@@ -653,8 +793,11 @@ async function loadMixes() {
               </div>
 
             </div>
+
           `;
+
         })
+
         .join("");
 
 
@@ -667,9 +810,12 @@ async function loadMixes() {
         ".latestBtn"
       )
       .forEach(b => {
+
         b.onclick =
           async () => {
+
             try {
+
               const all =
                 await getDocs(
                   collection(
@@ -678,8 +824,11 @@ async function loadMixes() {
                   )
                 );
 
+
               await Promise.all(
+
                 all.docs
+
                   .filter(
                     d =>
                       d.data().isLatest !==
@@ -688,6 +837,7 @@ async function loadMixes() {
                         b.dataset.id
                       )
                   )
+
                   .map(
                     d =>
                       updateDoc(
@@ -699,20 +849,29 @@ async function loadMixes() {
                         }
                       )
                   )
+
               );
 
+
               await loadMixes();
+
+
             } catch (err) {
+
               console.error(
                 "Set latest failed",
                 err
               );
 
+
               alert(
                 `${err?.code || "ERROR"}: ${err?.message || "Could not change Latest Mix."}`
               );
+
             }
+
           };
+
       });
 
 
@@ -725,8 +884,10 @@ async function loadMixes() {
         ".deleteMix"
       )
       .forEach(b => {
+
         b.onclick =
           async () => {
+
             if (
               !confirm(
                 "Delete this mix? This removes the audio file and its listing."
@@ -735,28 +896,37 @@ async function loadMixes() {
               return;
             }
 
+
             try {
+
               if (
                 b.dataset.source !==
                   "soundcloud" &&
                 b.dataset.path
               ) {
+
                 try {
+
                   await deleteObject(
                     ref(
                       storage,
                       b.dataset.path
                     )
                   );
+
                 } catch (err) {
+
                   if (
                     err?.code !==
                     "storage/object-not-found"
                   ) {
                     throw err;
                   }
+
                 }
+
               }
+
 
               await deleteDoc(
                 doc(
@@ -766,25 +936,36 @@ async function loadMixes() {
                 )
               );
 
+
               await loadMixes();
+
+
             } catch (err) {
+
               console.error(
                 "Delete mix failed",
                 err
               );
 
+
               alert(
                 `${err?.code || "ERROR"}: ${err?.message || "Delete failed."}`
               );
+
             }
+
           };
+
       });
 
+
   } catch (err) {
+
     console.error(
       "Admin mix load failed",
       err
     );
+
 
     el.innerHTML = `
       <div class="empty">
@@ -793,7 +974,9 @@ async function loadMixes() {
         ${esc(err?.message || String(err))}
       </div>
     `;
+
   }
+
 }
 
 
@@ -802,30 +985,41 @@ async function loadMixes() {
 ===================================================== */
 
 async function loadBookings() {
+
   const el =
     document.querySelector(
       "#bookings"
     );
 
+
   el.innerHTML =
     "Loading…";
 
+
   try {
+
     const snap =
       await getDocs(
+
         query(
+
           collection(
             db,
             "bookings"
           ),
+
           orderBy(
             "createdAt",
             "desc"
           )
+
         )
+
       );
 
+
     if (snap.empty) {
+
       el.innerHTML = `
         <div class="empty">
           No booking requests yet.
@@ -835,13 +1029,18 @@ async function loadBookings() {
       return;
     }
 
+
     el.innerHTML =
       snap.docs
+
         .map(d => {
+
           const x =
             d.data();
 
+
           return `
+
             <article class="booking">
 
               <div class="booking-top">
@@ -962,8 +1161,11 @@ async function loadBookings() {
               </div>
 
             </article>
+
           `;
+
         })
+
         .join("");
 
 
@@ -976,9 +1178,12 @@ async function loadBookings() {
         ".statusBtn"
       )
       .forEach(b => {
+
         b.onclick =
           async () => {
+
             try {
+
               await updateDoc(
                 doc(
                   db,
@@ -991,25 +1196,36 @@ async function loadBookings() {
                 }
               );
 
+
               await loadBookings();
+
+
             } catch (err) {
+
               console.error(
                 "Booking status update failed",
                 err
               );
 
+
               alert(
                 `${err?.code || "ERROR"}: ${err?.message || "Could not update booking."}`
               );
+
             }
+
           };
+
       });
 
+
   } catch (err) {
+
     console.error(
       "Booking load failed",
       err
     );
+
 
     el.innerHTML = `
       <div class="empty">
@@ -1018,5 +1234,7 @@ async function loadBookings() {
         ${esc(err?.message || String(err))}
       </div>
     `;
+
   }
+
 }
