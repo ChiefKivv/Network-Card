@@ -126,11 +126,18 @@
         </div>
       </div>
 
+      <!-- Direct-upload audio player -->
       <audio
         id="player"
         controls
         preload="metadata"
+        style="display:none;"
       ></audio>
+
+      <!--
+        SoundCloud player is inserted dynamically
+        by app.js when a SoundCloud mix is selected.
+      -->
 
     </section>
 
@@ -337,6 +344,7 @@
         <p
           id="bookingStatus"
           class="status"
+          aria-live="polite"
         ></p>
 
 
@@ -380,7 +388,7 @@
 
   <script
     type="module"
-    src="app.js"
+    src="./app.js?v=5"
   ></script>
 
 </body>
